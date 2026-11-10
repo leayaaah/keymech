@@ -1,0 +1,8 @@
+app:
+  chatbot:
+    mode: rule            # test không gọi Gemini thật
+spring:
+  ai:
+    google:
+      genai:
+        api-key: test-key

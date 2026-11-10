@@ -1,0 +1,10 @@
+.env
+application-local.yml
+node_modules/
+target/
+dist/
+*.log
+.idea/
+.vscode/
+uploads/*
+!uploads/.gitkeep
