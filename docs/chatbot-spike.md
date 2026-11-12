@@ -19,11 +19,16 @@
 | Lưu 5 document vào `vector_store` | 5 dòng |
 | `similaritySearch` với `topK=3` | Trả productId 2, 5, 3 cho câu hỏi bàn phím nhỏ gọn dùng switch linear |
 | `VEC_DISTANCE_COSINE(embedding, embedding)` | 0 trên 5 dòng; xác nhận vector có thể truy vấn |
-| `ChatClient` với `gemini-2.5-flash` | API trả 404: model không cấp cho khóa này |
-| `ChatClient` với `gemini-3.8-flash` và `gemini-3.5-flash-lite` | Không trả kết quả sau hơn 50 giây mỗi lần; tiến trình thử được dừng thủ công |
-| Gọi REST `generateContent` trực tiếp với `gemini-3.5-flash-lite` | Có một candidate sau khoảng 19 giây, vẫn vượt mục tiêu 8 giây |
+| `ChatClient` với `gemini-2.5-flash` hoặc `gemini-2.5-flash-lite` | API trả 404: hai model không cấp cho khóa này |
+| Lượt đầu với `gemini-3.8-flash` và `gemini-3.5-flash-lite` | Không trả kết quả sau hơn 50 giây mỗi lần; tiến trình thử được dừng thủ công, không có HTTP error để xác định nguyên nhân |
+| `ChatClient` tách khỏi vector store, dùng `gemini-3.5-flash-lite` | Thành công: câu ngắn 2,3 giây; câu tư vấn có ngữ cảnh 4,6 và 14,7 giây |
+| Chuỗi đủ 5 document → tìm kiếm → `ChatClient`, dùng `gemini-3.5-flash-lite` | Thành công; riêng lời gọi chat mất 11,3 giây |
+| `ChatClient` với `thinking-level=MINIMAL`, `max-output-tokens=128` | Câu tư vấn tách riêng thành công sau 2,4 và 6,5 giây; chuỗi đầy đủ thành công, riêng chat mất 2,4 giây |
+| Gọi REST `generateContent` trực tiếp với `gemini-3.5-flash-lite` | Thành công: một lượt `v1beta` khoảng 19 giây, một lượt `v1` khoảng 5,8 giây |
 
-**Kết quả phục vụ M1:** MariaDB Vector và Gemini embedding chạy được cả với DDL do thư viện tạo lẫn `01-schema.sql` hiện tại; chưa xác nhận `ChatClient` chạy đạt yêu cầu thời gian. Chưa cần chuyển sang `SimpleVectorStore` vì vector store không lỗi. Khi triển khai G-04, cần timeout 8 giây và đường lui sang `RuleBasedChatbotService`; thử lại model chat và đo trên máy thứ hai trước khi chốt AI cho demo. Nếu quy định không cho dùng `VEC_DISTANCE` dựng sẵn, phương án dự phòng là `SimpleVectorStore` theo kế hoạch.
+**Nguyên nhân đã xác nhận:** model `gemini-2.5-flash` trong cấu hình dự thảo trả 404 với khóa hiện tại; `gemini-2.5-flash-lite` cũng vậy. `ChatClient` và MariaDB Vector không bị lỗi kết nối cố định vì các lượt thử lại đã chạy trọn vẹn. Độ trễ của `gemini-3.5-flash-lite` thay đổi theo lượt; log của các lượt bị dừng không đủ để quy nguyên nhân cụ thể cho retry, mạng hay dịch vụ Gemini. Hai lượt với `thinking-level=MINIMAL` dưới 8 giây chỉ là mẫu nhỏ, chưa bảo đảm ngưỡng này khi demo.
+
+**Kết quả phục vụ M1:** Gemini embedding, MariaDB Vector và `ChatClient` đều chạy được với `01-schema.sql` hiện tại. Chưa cần chuyển sang `SimpleVectorStore` vì vector store không lỗi. Khi triển khai G-04, cần chọn model chat mà khóa được phép dùng, timeout 8 giây và đường lui sang `RuleBasedChatbotService`; đo thêm trên máy thứ hai trước khi chốt AI cho demo. Nếu quy định không cho dùng `VEC_DISTANCE` dựng sẵn, phương án dự phòng là `SimpleVectorStore` theo kế hoạch.
 
 ## DDL thực tế của `vector_store`
 
@@ -46,6 +51,6 @@ So với bảng tạo từ `database/01-schema.sql`, DDL do thư viện sinh có
 
 - Embedding auto-configuration cần `spring.ai.google.genai.embedding.api-key=${GEMINI_API_KEY}` riêng; chỉ đặt `spring.ai.google.genai.api-key` khiến khởi động báo thiếu `project-id`.
 - Harness dùng `spring.ai.google.genai.embedding.text.model=gemini-embedding-001` và `spring.ai.google.genai.embedding.text.dimensions=768`. Cấu trúc `embedding.text.options` trong `application.yml` hiện tại cần rà lại khi bật starter.
-- `gemini-2.5-flash` trong cấu hình dự thảo không dùng được với khóa thử này; không chốt model chat mới chỉ dựa vào lượt spike.
+- `gemini-2.5-flash` trong cấu hình dự thảo không dùng được với khóa thử này. `gemini-3.5-flash-lite` đã chạy qua `ChatClient` với Spring AI 2.0.0; cấu hình `thinking-level=MINIMAL`, `max-output-tokens=128` cải thiện các lượt đo nhỏ nhưng vẫn cần timeout và đo lặp trước khi chốt.
 
 Tham khảo: [MariaDB Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/mariadb.html), [Google GenAI Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/google-genai-embeddings-text.html), [Google GenAI Chat](https://docs.spring.io/spring-ai/reference/api/chat/google-genai-chat.html).
