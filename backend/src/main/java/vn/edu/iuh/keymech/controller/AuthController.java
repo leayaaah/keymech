@@ -33,9 +33,13 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
-        // Check if already authenticated
-        // This is handled by SecurityConfig: /api/auth/register only allows unauthenticated
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request,
+                                                  Authentication authentication) {
+        // Đăng ký chỉ cho phép khi chưa đăng nhập
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            throw new vn.edu.iuh.keymech.exception.BusinessException("FORBIDDEN", "Đã đăng nhập, không thể đăng ký");
+        }
         UserResponse response = authService.register(request);
         return ResponseEntity.status(201).body(response);
     }
