@@ -30,7 +30,7 @@ public class OrderItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private int quantity;
 
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 0)
