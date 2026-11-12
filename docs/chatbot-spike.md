@@ -23,7 +23,7 @@
 | `ChatClient` với `gemini-3.8-flash` và `gemini-3.5-flash-lite` | Không trả kết quả sau hơn 50 giây mỗi lần; tiến trình thử được dừng thủ công |
 | Gọi REST `generateContent` trực tiếp với `gemini-3.5-flash-lite` | Có một candidate sau khoảng 19 giây, vẫn vượt mục tiêu 8 giây |
 
-**Kết luận M1:** MariaDB Vector và Gemini embedding chạy được cả với DDL do thư viện tạo lẫn `01-schema.sql` hiện tại; chưa xác nhận `ChatClient` chạy đạt yêu cầu thời gian. Chưa cần chuyển sang `SimpleVectorStore` vì vector store không lỗi. Khi triển khai G-04, cần timeout 8 giây và đường lui sang `RuleBasedChatbotService`; thử lại model chat và đo trên máy thứ hai trước khi chốt AI cho demo. Nếu quy định không cho dùng `VEC_DISTANCE` dựng sẵn, phương án dự phòng là `SimpleVectorStore` theo kế hoạch.
+**Kết quả phục vụ M1:** MariaDB Vector và Gemini embedding chạy được cả với DDL do thư viện tạo lẫn `01-schema.sql` hiện tại; chưa xác nhận `ChatClient` chạy đạt yêu cầu thời gian. Chưa cần chuyển sang `SimpleVectorStore` vì vector store không lỗi. Khi triển khai G-04, cần timeout 8 giây và đường lui sang `RuleBasedChatbotService`; thử lại model chat và đo trên máy thứ hai trước khi chốt AI cho demo. Nếu quy định không cho dùng `VEC_DISTANCE` dựng sẵn, phương án dự phòng là `SimpleVectorStore` theo kế hoạch.
 
 ## DDL thực tế của `vector_store`
 
