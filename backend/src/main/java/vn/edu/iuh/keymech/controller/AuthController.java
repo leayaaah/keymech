@@ -71,5 +71,12 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("Đổi mật khẩu thành công"));
     }
 
+    @PutMapping("/users/me")
+    public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
+                                                       Authentication authentication) {
+        UserResponse response = authService.updateProfile(request, authentication);
+        return ResponseEntity.ok(response);
+    }
+
     public record MessageResponse(String message) {}
 }

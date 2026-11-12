@@ -17,6 +17,7 @@ import vn.edu.iuh.keymech.dto.ForgotPasswordRequest;
 import vn.edu.iuh.keymech.dto.LoginRequest;
 import vn.edu.iuh.keymech.dto.RegisterRequest;
 import vn.edu.iuh.keymech.dto.ResetPasswordRequest;
+import vn.edu.iuh.keymech.dto.UpdateProfileRequest;
 import vn.edu.iuh.keymech.dto.UserResponse;
 import vn.edu.iuh.keymech.exception.BusinessException;
 import vn.edu.iuh.keymech.exception.ResourceNotFoundException;
@@ -227,6 +228,27 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+    }
+
+    public UserResponse updateProfile(UpdateProfileRequest request, Authentication authentication) {
+        AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
+        User user = userRepository.findById(userDetails.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
+
+        // Không cho đổi email trùng
+        if (request.email() != null && !request.email().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
+                throw new BusinessException("EMAIL_EXISTS", "Email đã được sử dụng");
+            }
+            user.setEmail(request.email());
+        }
+
+        if (request.fullName() != null) user.setFullName(request.fullName());
+        if (request.phone() != null) user.setPhone(request.phone());
+        if (request.address() != null) user.setAddress(request.address());
+
+        User saved = userRepository.save(user);
+        return toResponse(saved);
     }
 
     private void clearResetCode(HttpSession session, String email) {
