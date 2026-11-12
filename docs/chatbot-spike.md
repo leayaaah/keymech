@@ -30,6 +30,8 @@
 
 **Kết quả phục vụ M1:** Gemini embedding, MariaDB Vector và `ChatClient` đều chạy được với `01-schema.sql` hiện tại. Chưa cần chuyển sang `SimpleVectorStore` vì vector store không lỗi. Khi triển khai G-04, cần chọn model chat mà khóa được phép dùng, timeout 8 giây và đường lui sang `RuleBasedChatbotService`; đo thêm trên máy thứ hai trước khi chốt AI cho demo. Nếu quy định không cho dùng `VEC_DISTANCE` dựng sẵn, phương án dự phòng là `SimpleVectorStore` theo kế hoạch.
 
+**Quyết định cấu hình ngày 13/11:** dùng `gemini-3.5-flash-lite` làm model chat mặc định trong `application.yml` và các ví dụ tài liệu. Các dòng thử model 2.5 ở trên được giữ để giải thích lỗi 404. Đây chưa phải bằng chứng bảo đảm mục tiêu 8 giây; timeout và bản dự phòng vẫn bắt buộc.
+
 ## DDL thực tế của `vector_store`
 
 Kết quả `SHOW CREATE TABLE vector_store` sau khi Spring AI 2.0.0 khởi tạo trên MariaDB 11.8:
@@ -51,6 +53,6 @@ So với bảng tạo từ `database/01-schema.sql`, DDL do thư viện sinh có
 
 - Embedding auto-configuration cần `spring.ai.google.genai.embedding.api-key=${GEMINI_API_KEY}` riêng; chỉ đặt `spring.ai.google.genai.api-key` khiến khởi động báo thiếu `project-id`.
 - Harness dùng `spring.ai.google.genai.embedding.text.model=gemini-embedding-001` và `spring.ai.google.genai.embedding.text.dimensions=768`. Cấu trúc `embedding.text.options` trong `application.yml` hiện tại cần rà lại khi bật starter.
-- `gemini-2.5-flash` trong cấu hình dự thảo không dùng được với khóa thử này. `gemini-3.5-flash-lite` đã chạy qua `ChatClient` với Spring AI 2.0.0; cấu hình `thinking-level=MINIMAL`, `max-output-tokens=128` cải thiện các lượt đo nhỏ nhưng vẫn cần timeout và đo lặp trước khi chốt.
+- `gemini-2.5-flash` trong cấu hình cũ không dùng được với khóa thử này. `gemini-3.5-flash-lite` đã chạy qua `ChatClient` với Spring AI 2.0.0; cấu hình `thinking-level=MINIMAL`, `max-output-tokens=128` cải thiện các lượt đo nhỏ nhưng chưa được đặt làm mặc định vì cần xác nhận chất lượng câu trả lời và đo lặp.
 
 Tham khảo: [MariaDB Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/mariadb.html), [Google GenAI Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/google-genai-embeddings-text.html), [Google GenAI Chat](https://docs.spring.io/spring-ai/reference/api/chat/google-genai-chat.html).

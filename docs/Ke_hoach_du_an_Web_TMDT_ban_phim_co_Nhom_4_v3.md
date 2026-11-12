@@ -454,7 +454,7 @@ Chatbot dùng Spring AI theo kiểu RAG: sản phẩm và kiến thức được
 
 | Thành phần | Công nghệ | Ghi chú |
 | --- | --- | --- |
-| Chat | `spring-ai-starter-model-google-genai`, `ChatClient`, model Flash của Gemini (ví dụ `gemini-2.5-flash`), `temperature` 0.2 | Kiểm tra model còn được hỗ trợ ở thời điểm làm và ở M5 |
+| Chat | `spring-ai-starter-model-google-genai`, `ChatClient`, `gemini-3.5-flash-lite`, `temperature` 0.2 | Spike 13/11: hai model 2.5 Flash trả 404 với khóa hiện tại; đo lại độ trễ và quyền truy cập model ở M5 |
 | Embedding | `spring-ai-starter-model-google-genai-embedding`, `gemini-embedding-001`, `dimensions` 768 | Mặc định của model là 3072 chiều; 768 đủ cho vài chục sản phẩm và nhẹ hơn. Đổi số chiều thì phải sửa `VECTOR(768)` và reindex |
 | Vector store | `spring-ai-starter-vector-store-mariadb`, khoảng cách `COSINE`, `initialize-schema=false` | Cần MariaDB 11.7 trở lên; điểm tương đồng tính bằng 1 trừ khoảng cách |
 | Phiên bản | Spring AI 2.0.x với Spring Boot 4.x (JDK 17 trở lên, khuyến nghị 21), hoặc Spring AI 1.1.x với Spring Boot 3.5.x | Tên starter giống nhau ở hai nhánh; chốt ở M1 sau spike (câu hỏi 5) |
@@ -466,10 +466,13 @@ spring:
       genai:
         api-key: ${GEMINI_API_KEY}
         chat:
-          options: { model: gemini-2.5-flash, temperature: 0.2 }
+          model: gemini-3.5-flash-lite
+          temperature: 0.2
         embedding:
+          api-key: ${GEMINI_API_KEY}
           text:
-            options: { model: gemini-embedding-001, dimensions: 768 }
+            model: gemini-embedding-001
+            dimensions: 768
     vectorstore:
       mariadb:
         initialize-schema: false
@@ -482,7 +485,7 @@ app:
     timeout-seconds: 8
 ```
 
-Tên thuộc tính có thể khác chút giữa các phiên bản Spring AI; đối chiếu với tài liệu của phiên bản đã chọn ở Sprint 1.
+Các tên thuộc tính trên đã được thử với Spring AI 2.0.0 trong spike G-04; khi nâng phiên bản cần đối chiếu lại tài liệu và chạy thử.
 
 **Dữ liệu được nhúng (indexing):**
 
