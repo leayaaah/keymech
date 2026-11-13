@@ -8,9 +8,9 @@ Ngày soạn: 13/11/2026. Đây là hợp đồng để frontend dựng giao di�
 - Xác thực bằng Session cookie. `/api/orders/**` chỉ dành cho Customer; `/api/staff/orders/**` dành cho Staff và Admin. Guest nhận 401, vai trò không phù hợp nhận 403. Customer chỉ xem đơn của chính mình; xem đơn của người khác nhận 403 theo kế hoạch.
 - Tiền là số nguyên VND trong JSON, ánh xạ `BigDecimal` ở Java. Ngày giờ là chuỗi ISO 8601 dạng `yyyy-MM-ddTHH:mm:ss` theo giờ ứng dụng.
 - `status`: `NEW`, `CONFIRMED`, `SHIPPING`, `COMPLETED`, `CANCELLED`; `paymentMethod`: `COD`, `BANK_TRANSFER`; `paymentStatus`: `UNPAID`, `PAID`.
-- API danh sách nhận `page` từ 0 và `size` dương; response luôn có `content`, `page`, `size`, `totalElements`, `totalPages`. Giá trị mặc định và giới hạn `size` cần nhóm chốt trước khi triển khai.
+- API danh sách mặc định `page=0`, `size=10`; `page` phải từ 0, `size` từ 1 đến 50. Giá trị ngoài khoảng trả 400 `VALIDATION_ERROR`, không tự sửa. Sắp xếp `orderDate DESC, id DESC` để thứ tự ổn định. Response luôn có `content`, `page`, `size`, `totalElements`, `totalPages`.
 - Mã lỗi dùng `{status, error, message, timestamp}`. `message` tiếng Việt; client xử lý theo `status` và `error`, không phân tích chuỗi `message`.
-- Giá, trạng thái hiển thị và tồn kho của sản phẩm luôn được đọc lại từ CSDL khi checkout. `unitPrice` trong đơn là giá chốt khi mua, không đổi khi giá sản phẩm về sau thay đổi.
+- Giá, trạng thái hiển thị và tồn kho của sản phẩm luôn được đọc lại từ CSDL khi checkout. `unitPrice` trong đơn là giá chốt khi mua, không đổi khi giá sản phẩm về sau thay đổi. `productName` trong chi tiết đơn lấy từ sản phẩm hiện tại nên có thể đổi khi Staff sửa tên; schema hiện chưa lưu tên lúc mua.
 
 ### Mẫu lỗi
 
@@ -26,16 +26,17 @@ Ngày soạn: 13/11/2026. Đây là hợp đồng để frontend dựng giao di�
 | HTTP | `error` | Khi nào |
 | --- | --- | --- |
 | 400 | `VALIDATION_ERROR` | Body, tham số hoặc khoảng ngày không hợp lệ |
-| 400 | `EMPTY_CART` *(đề xuất)* | Giỏ trong Session rỗng khi checkout |
+| 400 | `EMPTY_CART` | Giỏ trong Session rỗng khi checkout |
 | 401 | `UNAUTHORIZED` | Chưa đăng nhập |
 | 403 | `FORBIDDEN` | Sai vai trò hoặc Customer xem đơn người khác |
 | 404 | `NOT_FOUND` | Không tồn tại đơn hoặc dòng hàng |
 | 409 | `OUT_OF_STOCK` | Thiếu hàng hoặc sản phẩm đã ẩn; checkout rollback và giữ giỏ |
-| 409 | `INVALID_TRANSITION` *(đề xuất)* | Trạng thái mới không theo luồng hợp lệ |
-| 409 | `ORDER_NOT_EDITABLE` *(đề xuất)* | Sửa số lượng ngoài trạng thái `NEW` hoặc `CONFIRMED` |
+| 409 | `INVALID_TRANSITION` | Trạng thái đơn mới không theo luồng hợp lệ |
+| 409 | `ORDER_NOT_EDITABLE` | Sửa số lượng ngoài trạng thái `NEW` hoặc `CONFIRMED` |
+| 409 | `PAYMENT_NOT_EDITABLE` | Đánh dấu đã trả cho đơn đã hủy, đổi `PAID` về `UNPAID`, đánh dấu `PAID` lần nữa hoặc hủy đơn đã trả |
 | 500 | `INTERNAL_ERROR` | Lỗi hệ thống; không trả stack trace |
 
-Các mã đánh dấu *đề xuất* chưa có code nghiệp vụ tương ứng và cần nhóm xác nhận trước khi frontend phụ thuộc vào chúng. Không tự retry checkout sau lỗi không rõ kết quả; cần tải lại giỏ và lịch sử đơn trước.
+Các mã lỗi này là hợp đồng cho phần nghiệp vụ sẽ triển khai; các endpoint đơn hàng chưa có code tương ứng. Không tự retry checkout sau lỗi không rõ kết quả; cần tải lại giỏ và lịch sử đơn trước.
 
 ## Customer
 
@@ -68,7 +69,7 @@ Lỗi: 400 `VALIDATION_ERROR` hoặc `EMPTY_CART`; 401/403; 409 `OUT_OF_STOCK` (
 
 ### `GET /api/orders/my?page=0&size=10`
 
-Danh sách đơn của Customer hiện tại, phân trang theo `orderDate` mới nhất trước *(đề xuất)*. Thành công: `200 OK`.
+Danh sách đơn của Customer hiện tại, phân trang và sắp xếp theo quy ước chung. Thành công: `200 OK`.
 
 ```json
 {
@@ -129,13 +130,13 @@ Chi tiết đơn của Customer hiện tại. Thành công: `200 OK`.
 }
 ```
 
-`productName` đọc từ sản phẩm hiện tại; `order_items` chỉ lưu snapshot đơn giá. Sản phẩm đã ẩn vẫn xuất hiện trong đơn cũ. Lỗi: 401/403; 404 `NOT_FOUND` nếu ID không tồn tại.
+`productName` đọc từ sản phẩm hiện tại, kể cả sản phẩm đã ẩn; tên có thể đổi sau khi Staff sửa sản phẩm. `order_items` chỉ lưu snapshot đơn giá. Nếu sau này cần cố định tên lúc mua, phải đổi schema trong một PR riêng và báo nhóm. Lỗi: 401/403; 404 `NOT_FOUND` nếu ID không tồn tại.
 
 ## Staff và Admin
 
 ### `GET /api/staff/orders?keyword=an&fromDate=2026-11-01&toDate=2026-11-30&status=NEW&page=0&size=10`
 
-Tất cả bộ lọc đều tùy chọn. `keyword` tìm theo mã đơn, tên hoặc email Customer; `fromDate` và `toDate` dạng `yyyy-MM-dd`, gồm cả ngày đầu và ngày cuối; `status` dùng enum ở trên. Sắp xếp `orderDate` mới nhất trước *(đề xuất)*. Thành công: `200 OK`.
+Tất cả bộ lọc đều tùy chọn. `keyword` tìm theo mã đơn, tên hoặc email Customer; `fromDate` và `toDate` dạng `yyyy-MM-dd`, gồm cả ngày đầu và ngày cuối; `status` dùng enum ở trên. Phân trang và sắp xếp theo quy ước chung. Thành công: `200 OK`.
 
 ```json
 {
@@ -187,7 +188,7 @@ Body:
 }
 ```
 
-Luồng hợp lệ: `NEW → CONFIRMED → SHIPPING → COMPLETED`; chỉ `NEW` và `CONFIRMED` có thể chuyển sang `CANCELLED`. Khi hủy, hoàn tồn kho từng dòng trong cùng transaction. `COMPLETED` và `CANCELLED` là trạng thái cuối. Thành công: `200 OK`, trả chi tiết đơn với `status` mới. Lỗi: 400 `VALIDATION_ERROR`; 401/403; 404 `NOT_FOUND`; 409 `INVALID_TRANSITION`.
+Luồng hợp lệ: `NEW → CONFIRMED → SHIPPING → COMPLETED`; chỉ `NEW` và `CONFIRMED` đang `UNPAID` có thể chuyển sang `CANCELLED`. Đơn đã `PAID` không được hủy vì chưa có luồng hoàn tiền. Khi hủy, hoàn tồn kho từng dòng trong cùng transaction. `COMPLETED` và `CANCELLED` là trạng thái cuối. Thành công: `200 OK`, trả chi tiết đơn với `status` mới. Lỗi: 400 `VALIDATION_ERROR`; 401/403; 404 `NOT_FOUND`; 409 `INVALID_TRANSITION` hoặc `PAYMENT_NOT_EDITABLE` nếu hủy đơn đã trả.
 
 ### `PUT /api/staff/orders/{id}/payment`
 
@@ -199,11 +200,4 @@ Cập nhật `paymentStatus` do Staff hoặc Admin xác nhận, ví dụ chuyể
 }
 ```
 
-Thành công: `200 OK`, trả chi tiết đơn với `paymentStatus` mới. Lỗi: 400 `VALIDATION_ERROR`; 401/403; 404 `NOT_FOUND`. Quy tắc cho phép chuyển ngược `PAID → UNPAID` và xử lý thanh toán của đơn `CANCELLED` chưa được kế hoạch xác định; nhóm cần chốt trước khi code endpoint này.
-
-## Điểm cần chốt với nhóm trước khi triển khai
-
-1. Mặc định và giới hạn tối đa của `size`, thứ tự sắp xếp danh sách.
-2. Các mã đề xuất `EMPTY_CART`, `INVALID_TRANSITION`, `ORDER_NOT_EDITABLE`.
-3. Quy tắc cập nhật `paymentStatus` khi đã `PAID` hoặc đơn đã hủy.
-4. Tên sản phẩm trong chi tiết đơn lấy từ sản phẩm hiện tại vì schema chưa có cột snapshot tên; nếu cần giữ tên lúc mua, phải đổi schema và báo nhóm.
+Chỉ cho chuyển `UNPAID → PAID` một lần khi đơn chưa `CANCELLED`. Không cho chuyển ngược `PAID → UNPAID` hoặc đánh dấu `PAID` lần nữa. Thành công: `200 OK`, trả chi tiết đơn với `paymentStatus` mới. Lỗi: 400 `VALIDATION_ERROR`; 401/403; 404 `NOT_FOUND`; 409 `PAYMENT_NOT_EDITABLE` nếu vi phạm quy tắc trên.
