@@ -3,6 +3,7 @@ package vn.edu.iuh.keymech.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +39,7 @@ public class AuthController {
         // Đăng ký chỉ cho phép khi chưa đăng nhập
         if (authentication != null && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getPrincipal())) {
-            throw new vn.edu.iuh.keymech.exception.BusinessException("FORBIDDEN", "Đã đăng nhập, không thể đăng ký");
+            throw new AccessDeniedException("Đã đăng nhập, không thể đăng ký");
         }
         UserResponse response = authService.register(request);
         return ResponseEntity.status(201).body(response);
@@ -62,20 +63,6 @@ public class AuthController {
                                                           HttpServletRequest httpRequest) {
         authService.resetPassword(request, httpRequest);
         return ResponseEntity.ok(new MessageResponse("Đặt lại mật khẩu thành công"));
-    }
-
-    @PutMapping("/users/me/password")
-    public ResponseEntity<MessageResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request,
-                                                           Authentication authentication) {
-        authService.changePassword(request, authentication);
-        return ResponseEntity.ok(new MessageResponse("Đổi mật khẩu thành công"));
-    }
-
-    @PutMapping("/users/me")
-    public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
-                                                       Authentication authentication) {
-        UserResponse response = authService.updateProfile(request, authentication);
-        return ResponseEntity.ok(response);
     }
 
     public record MessageResponse(String message) {}

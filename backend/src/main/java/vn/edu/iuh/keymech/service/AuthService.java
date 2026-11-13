@@ -2,9 +2,11 @@ package vn.edu.iuh.keymech.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,10 @@ import vn.edu.iuh.keymech.dto.ResetPasswordRequest;
 import vn.edu.iuh.keymech.dto.UpdateProfileRequest;
 import vn.edu.iuh.keymech.dto.UserResponse;
 import vn.edu.iuh.keymech.exception.BusinessException;
+import vn.edu.iuh.keymech.exception.InvalidCodeException;
+import vn.edu.iuh.keymech.exception.InvalidCredentialsException;
+import vn.edu.iuh.keymech.exception.InvalidPasswordException;
+import vn.edu.iuh.keymech.exception.NotAuthenticatedException;
 import vn.edu.iuh.keymech.exception.ResourceNotFoundException;
 import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
@@ -64,26 +70,35 @@ public class AuthService {
     }
 
     public UserResponse login(LoginRequest request, HttpServletRequest httpRequest) {
-        // Authenticate
-        Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
+        // Authenticate; mọi thất bại xác thực -> INVALID_CREDENTIALS (401)
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+            );
+        } catch (AuthenticationException e) {
+            throw new InvalidCredentialsException("Email hoặc mật khẩu không đúng");
+        }
 
         AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
         User user = userRepository.findByEmail(request.email())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
-        // Change session ID to prevent session fixation
-        HttpSession session = httpRequest.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-        HttpSession newSession = httpRequest.getSession(true);
-        httpRequest.changeSessionId();
+        // Lưu giỏ từ session cũ (nếu có) trước khi đổi id
+        HttpSession oldSession = httpRequest.getSession(false);
+        Object cart = oldSession != null ? oldSession.getAttribute(SessionKeys.CART) : null;
 
-        // If Staff or Admin, remove cart
+        // Change session ID to prevent session fixation (không invalidate session cũ)
+        HttpSession session = httpRequest.getSession(true);
+        httpRequest.changeSessionId();
+        // Lấy lại session mới sau khi đổi id
+        session = httpRequest.getSession(false);
+
+        // Staff/Admin: xóa giỏ. Customer: restore giỏ cũ vào session mới.
         if (userDetails.getRole().equals("STAFF") || userDetails.getRole().equals("ADMIN")) {
-            newSession.removeAttribute(SessionKeys.CART);
+            session.removeAttribute(SessionKeys.CART);
+        } else if (cart != null) {
+            session.setAttribute(SessionKeys.CART, cart);
         }
 
         // Save SecurityContext
@@ -125,6 +140,10 @@ public class AuthService {
     }
 
     public UserResponse getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new NotAuthenticatedException("Vui lòng đăng nhập");
+        }
         AppUserDetails userDetails = (AppUserDetails) authentication.getPrincipal();
         User user = userRepository.findById(userDetails.getId())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
@@ -179,7 +198,7 @@ public class AuthService {
 
         HttpSession session = httpRequest.getSession(false);
         if (session == null) {
-            throw new BusinessException("INVALID_CODE", "Phiên làm việc đã hết hạn, vui lòng yêu cầu mã mới");
+            throw new InvalidCodeException("INVALID_CODE", "Phiên làm việc đã hết hạn, vui lòng yêu cầu mã mới");
         }
 
         String storedHash = (String) session.getAttribute(SessionKeys.RESET_CODE + "_" + email);
@@ -187,23 +206,23 @@ public class AuthService {
         Integer attempts = (Integer) session.getAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts");
 
         if (storedHash == null || expires == null) {
-            throw new BusinessException("INVALID_CODE", "Mã xác thực không hợp lệ hoặc đã hết hạn");
+            throw new InvalidCodeException("INVALID_CODE", "Mã xác thực không hợp lệ hoặc đã hết hạn");
         }
 
         if (LocalDateTime.now().isAfter(expires)) {
             clearResetCode(session, email);
-            throw new BusinessException("INVALID_CODE", "Mã xác thực đã hết hạn");
+            throw new InvalidCodeException("INVALID_CODE", "Mã xác thực đã hết hạn");
         }
 
         if (attempts != null && attempts >= 5) {
             clearResetCode(session, email);
-            throw new BusinessException("INVALID_CODE", "Nhập sai quá nhiều lần, vui lòng yêu cầu mã mới");
+            throw new InvalidCodeException("INVALID_CODE", "Nhập sai quá nhiều lần, vui lòng yêu cầu mã mới");
         }
 
         if (!hashCode(code).equals(storedHash)) {
             attempts = (attempts == null ? 1 : attempts + 1);
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts", attempts);
-            throw new BusinessException("INVALID_CODE", "Mã xác thực không đúng");
+            throw new InvalidCodeException("INVALID_CODE", "Mã xác thực không đúng");
         }
 
         // Valid code - update password
@@ -223,7 +242,7 @@ public class AuthService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
         if (!passwordEncoder.matches(request.oldPassword(), user.getPassword())) {
-            throw new BusinessException("INVALID_PASSWORD", "Mật khẩu cũ không đúng");
+            throw new InvalidPasswordException("INVALID_PASSWORD", "Mật khẩu cũ không đúng");
         }
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));

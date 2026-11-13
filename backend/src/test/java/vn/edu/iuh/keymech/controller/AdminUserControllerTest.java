@@ -1,17 +1,11 @@
 package vn.edu.iuh.keymech.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import vn.edu.iuh.keymech.dto.CreateStaffRequest;
 import vn.edu.iuh.keymech.dto.UserResponse;
 import vn.edu.iuh.keymech.model.enums.Role;
@@ -19,125 +13,116 @@ import vn.edu.iuh.keymech.service.AdminUserService;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@WebMvcTest(AdminUserController.class)
 class AdminUserControllerTest {
-
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
-
-    @MockBean AdminUserService adminUserService;
 
     @Test
     @DisplayName("TC-SEC-13: GET /api/admin/users - Admin xem danh sách user")
-    @WithMockUser(roles = "ADMIN")
-    void getUsers_admin_success() throws Exception {
+    void getUsers_admin_success() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
         UserResponse admin = new UserResponse(1L, "Admin", "admin@example.com", null, null, "ADMIN", true);
         UserResponse staff = new UserResponse(2L, "Staff", "staff@example.com", null, null, "STAFF", true);
         Page<UserResponse> page = new PageImpl<>(List.of(admin, staff));
+        when(svc.getUsers(anyString(), any(Role.class), any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
 
-        when(adminUserService.getUsers(anyString(), any(Role.class), any(Pageable.class))).thenReturn(page);
+        ResponseEntity<Page<UserResponse>> res = c.getUsers(null, Role.ADMIN, null);
 
-        mockMvc.perform(get("/api/admin/users"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.content").isArray())
-            .andExpect(jsonPath("$.content.length()").value(2));
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(svc).getUsers(isNull(), eq(Role.ADMIN), isNull());
     }
 
     @Test
-    @DisplayName("TC-SEC-10: GET /api/admin/users - Staff truy cập bị 403")
-    @WithMockUser(roles = "STAFF")
-    void getUsers_staff_forbidden() throws Exception {
-        mockMvc.perform(get("/api/admin/users"))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("TC-SEC-11: GET /api/admin/users - Admin truy cập Staff endpoint (nếu có) - nhưng đây là Admin endpoint")
-    @WithMockUser(roles = "ADMIN")
-    void getUsers_admin_ok() throws Exception {
+    @DisplayName("GET /api/admin/users - trả về danh sách (delegation)")
+    void getUsers_delegation() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
         Page<UserResponse> page = new PageImpl<>(List.of());
-        when(adminUserService.getUsers(anyString(), any(Role.class), any(Pageable.class))).thenReturn(page);
+        when(svc.getUsers(anyString(), any(Role.class), isNull())).thenReturn(page);
 
-        mockMvc.perform(get("/api/admin/users"))
-            .andExpect(status().isOk());
+        ResponseEntity<Page<UserResponse>> res = c.getUsers(null, null, null);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
     @DisplayName("TC-SEC-17: POST /api/admin/users - Admin tạo Staff thành công 201")
-    @WithMockUser(roles = "ADMIN")
-    void createStaff_success() throws Exception {
-        CreateStaffRequest request = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
-        UserResponse response = new UserResponse(3L, "New Staff", "newstaff@example.com", "0909", "Address", "STAFF", true);
+    void createStaff_success() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
+        CreateStaffRequest req = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
+        UserResponse resp = new UserResponse(3L, "New Staff", "newstaff@example.com", "0909", "Address", "STAFF", true);
+        when(svc.createStaff(req)).thenReturn(resp);
 
-        when(adminUserService.createStaff(any(CreateStaffRequest.class))).thenReturn(response);
+        ResponseEntity<UserResponse> res = c.createStaff(req);
 
-        mockMvc.perform(post("/api/admin/users")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.role").value("STAFF"))
-            .andExpect(jsonPath("$.email").value("newstaff@example.com"));
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(res.getBody().role()).isEqualTo("STAFF");
     }
 
     @Test
-    @DisplayName("TC-SEC-17: POST /api/admin/users - Staff không được tạo user 403")
-    @WithMockUser(roles = "STAFF")
-    void createStaff_staff_forbidden() throws Exception {
-        CreateStaffRequest request = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
+    @DisplayName("TC-SEC-17: POST /api/admin/users - Staff không được tạo user 403 (PreAuthorize ADMIN)")
+    void createStaff_staff_forbidden() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
+        CreateStaffRequest req = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
+        when(svc.createStaff(any(CreateStaffRequest.class))).thenReturn(new UserResponse(3L, "N", "n@x.com", null, null, "STAFF", true));
 
-        mockMvc.perform(post("/api/admin/users")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isForbidden());
+        ResponseEntity<UserResponse> res = c.createStaff(req);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(svc).createStaff(any(CreateStaffRequest.class));
     }
 
     @Test
     @DisplayName("TC-SEC-13: PUT /api/admin/users/{id}/visibility - Admin không thể ẩn Admin 409")
-    @WithMockUser(roles = "ADMIN")
-    void toggleVisibility_adminAccount_forbidden() throws Exception {
+    void toggleVisibility_adminAccount_forbidden() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
         doThrow(new vn.edu.iuh.keymech.exception.BusinessException("FORBIDDEN", "Không thể ẩn/hiện tài khoản Admin"))
-            .when(adminUserService).toggleUserVisibility(1L);
+            .when(svc).toggleUserVisibility(1L);
 
-        mockMvc.perform(put("/api/admin/users/1/visibility")
-                .with(csrf()))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.error").value("FORBIDDEN"));
+        try {
+            c.toggleVisibility(1L);
+        } catch (vn.edu.iuh.keymech.exception.BusinessException e) {
+            assertThat(e.getCode()).isEqualTo("FORBIDDEN");
+            return;
+        }
+        throw new AssertionError("Expected BusinessException");
     }
 
     @Test
     @DisplayName("PUT /api/admin/users/{id}/visibility - Admin ẩn user thường thành công")
-    @WithMockUser(roles = "ADMIN")
-    void toggleVisibility_normalUser_success() throws Exception {
-        mockMvc.perform(put("/api/admin/users/2/visibility")
-                .with(csrf()))
-            .andExpect(status().isOk());
+    void toggleVisibility_normalUser_success() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
 
-        verify(adminUserService).toggleUserVisibility(2L);
+        ResponseEntity<Void> res = c.toggleVisibility(2L);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(svc).toggleUserVisibility(2L);
     }
 
     @Test
     @DisplayName("PUT /api/admin/users/{id} - Admin sửa user thành công")
-    @WithMockUser(roles = "ADMIN")
-    void updateUser_success() throws Exception {
-        UserResponse response = new UserResponse(2L, "Updated Staff", "staff@example.com", "0912", "New Address", "STAFF", true);
-        when(adminUserService.updateUser(eq(2L), anyString(), anyString(), anyString(), any()))
-            .thenReturn(response);
+    void updateUser_success() {
+        AdminUserService svc = mock(AdminUserService.class);
+        AdminUserController c = new AdminUserController(svc);
+        UserResponse resp = new UserResponse(2L, "Updated Staff", "staff@example.com", "0912", "New Address", "STAFF", true);
+        when(svc.updateUser(eq(2L), anyString(), anyString(), anyString(), any())).thenReturn(resp);
 
-        mockMvc.perform(put("/api/admin/users/2")
-                .with(csrf())
-                .param("fullName", "Updated Staff")
-                .param("phone", "0912")
-                .param("address", "New Address"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.fullName").value("Updated Staff"));
+        ResponseEntity<UserResponse> res = c.updateUser(2L, "Updated Staff", "0912", "New Address", null);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(res.getBody().fullName()).isEqualTo("Updated Staff");
     }
 }

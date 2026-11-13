@@ -9,6 +9,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import vn.edu.iuh.keymech.exception.InvalidCodeException;
+import vn.edu.iuh.keymech.exception.InvalidCredentialsException;
+import vn.edu.iuh.keymech.exception.InvalidPasswordException;
+import vn.edu.iuh.keymech.exception.NotAuthenticatedException;
 
 @Slf4j
 @RestControllerAdvice
@@ -16,6 +20,26 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ErrorResponse> build(HttpStatus s, String error, String msg) {
         return ResponseEntity.status(s).body(ErrorResponse.of(s.value(), error, msg));
+    }
+
+    @ExceptionHandler(NotAuthenticatedException.class)
+    public ResponseEntity<ErrorResponse> notAuthenticated(NotAuthenticatedException e) {
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> invalidCredentials(InvalidCredentialsException e) {
+        return build(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng");
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ErrorResponse> invalidPassword(InvalidPasswordException e) {
+        return build(HttpStatus.BAD_REQUEST, e.getCode(), e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCodeException.class)
+    public ResponseEntity<ErrorResponse> invalidCode(InvalidCodeException e) {
+        return build(HttpStatus.BAD_REQUEST, e.getCode(), e.getMessage());
     }
 
     @ExceptionHandler(BusinessException.class)
