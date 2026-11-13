@@ -1,0 +1,8 @@
+{
+  "greeting": "Xin chào! Mình có thể tư vấn bàn phím, switch, keycap và ngân sách của bạn.",
+  "custom": "Nếu muốn lắp bàn phím theo ý riêng, bạn có thể gửi yêu cầu Custom. Hãy cho mình biết layout, switch và ngân sách mong muốn.",
+  "policy": "Mình chưa có thông tin chính sách cụ thể để xác nhận. Bạn vui lòng liên hệ cửa hàng; mình có thể giúp chọn sản phẩm phù hợp.",
+  "outOfScope": "Xin lỗi, mình chỉ tư vấn bàn phím cơ và phụ kiện. Bạn muốn tìm theo layout hoặc ngân sách nào?",
+  "recommend": "Đây là các sản phẩm đang hiển thị phù hợp với thông tin bạn cung cấp. Giá và tình trạng hàng được lấy từ cửa hàng.",
+  "noResults": "Mình chưa tìm thấy sản phẩm phù hợp. Bạn thử đổi layout, từ khóa hoặc ngân sách nhé."
+}

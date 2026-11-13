@@ -61,7 +61,7 @@ app:
   cors-origin: ${APP_CORS_ORIGIN:http://localhost:5173}
   upload-dir: ${APP_UPLOAD_DIR:./uploads}
   chatbot:
-    mode: ${APP_CHATBOT_MODE:ai}   # ai | rule
+    mode: ${APP_CHATBOT_MODE:rule}   # ai | rule; giai đoạn A chỉ có rule
     personalization: true
     timeout-seconds: 8
     rate-limit-per-minute: 10

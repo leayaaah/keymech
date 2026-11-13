@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -20,7 +21,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> business(BusinessException e) {
-        return build(HttpStatus.CONFLICT, e.getCode(), e.getMessage());
+        return build(e.getStatus(), e.getCode(), e.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> malformedBody(HttpMessageNotReadableException e) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Dữ liệu yêu cầu không hợp lệ");
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)

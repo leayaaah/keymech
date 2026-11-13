@@ -1,6 +1,6 @@
 # Hợp đồng API đơn hàng v1 — C-02, C-04, A-04 đến A-06
 
-Ngày soạn: 13/11/2026. Đây là hợp đồng để frontend dựng giao diện và dữ liệu mock; các endpoint chưa được triển khai. Khi thay đổi đường dẫn, JSON hoặc mã lỗi sau khi nhóm chốt, phải cập nhật file này và báo nhóm frontend trước khi merge.
+Ngày soạn: 13/11/2026. Đây là hợp đồng để frontend dựng giao diện và dữ liệu mock. Nhánh Sprint 2 triển khai `POST /api/orders/checkout`; các endpoint danh sách, chi tiết và Staff còn ở giai đoạn sau. Khi thay đổi đường dẫn, JSON hoặc mã lỗi sau khi nhóm chốt, phải cập nhật file này và báo nhóm frontend trước khi merge.
 
 ## Quy ước chung
 
@@ -36,7 +36,7 @@ Ngày soạn: 13/11/2026. Đây là hợp đồng để frontend dựng giao di�
 | 409 | `PAYMENT_NOT_EDITABLE` | Đánh dấu đã trả cho đơn đã hủy, đổi `PAID` về `UNPAID`, đánh dấu `PAID` lần nữa hoặc hủy đơn đã trả |
 | 500 | `INTERNAL_ERROR` | Lỗi hệ thống; không trả stack trace |
 
-Các mã lỗi này là hợp đồng cho phần nghiệp vụ sẽ triển khai; các endpoint đơn hàng chưa có code tương ứng. Không tự retry checkout sau lỗi không rõ kết quả; cần tải lại giỏ và lịch sử đơn trước.
+Các mã lỗi này là hợp đồng cho phần nghiệp vụ; chỉ các mã của endpoint đã triển khai có code tương ứng. Không tự retry checkout sau lỗi không rõ kết quả; cần tải lại giỏ và lịch sử đơn trước.
 
 ## Customer
 
@@ -65,7 +65,7 @@ Thành công: `201 Created`. Đơn khởi tạo `NEW`, `UNPAID`; giỏ chỉ xó
 }
 ```
 
-Lỗi: 400 `VALIDATION_ERROR` hoặc `EMPTY_CART`; 401/403; 409 `OUT_OF_STOCK` (rollback toàn bộ, giữ giỏ); 500 `INTERNAL_ERROR`. Email xác nhận và tracking chạy sau commit, lỗi các việc phụ không hủy đơn.
+Lỗi: 400 `VALIDATION_ERROR` hoặc `EMPTY_CART`; 401/403; 409 `OUT_OF_STOCK` (rollback toàn bộ, giữ giỏ); 500 `INTERNAL_ERROR`. Email xác nhận được lên lịch sau commit; lỗi email không hủy đơn. Ghi `PURCHASE` sẽ nối với `ActivityTracker` do Phương phụ trách khi module tracking được merge.
 
 ### `GET /api/orders/my?page=0&size=10`
 
