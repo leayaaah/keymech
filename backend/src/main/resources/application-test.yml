@@ -6,3 +6,5 @@ spring:
     google:
       genai:
         api-key: test-key
+        embedding:
+          api-key: test-key
