@@ -9,13 +9,20 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.context.request.RequestContextHolder;
 
 import vn.edu.iuh.keymech.dto.cart.AddToCartRequest;
+import vn.edu.iuh.keymech.security.AppUserDetails;
 import vn.edu.iuh.keymech.dto.cart.CartResponse;
 import vn.edu.iuh.keymech.dto.cart.UpdateCartItemRequest;
 import vn.edu.iuh.keymech.service.CartService;
+import vn.edu.iuh.keymech.tracking.ActivityTracker;
+import vn.edu.iuh.keymech.model.enums.EventType;
+import vn.edu.iuh.keymech.util.SessionKeys;
+import vn.edu.iuh.keymech.security.AppUserDetails;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,9 +36,27 @@ import jakarta.servlet.http.HttpSession;
 public class CartController {
 
     private final CartService cartService;
+    private final ActivityTracker activityTracker;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, ActivityTracker activityTracker) {
         this.cartService = cartService;
+        this.activityTracker = activityTracker;
+    }
+
+    private Long currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof AppUserDetails ud) {
+            return ud.getId();
+        }
+        return null;
+    }
+
+    private String currentVisitorId() {
+        HttpSession session = currentSession();
+        if (session != null) {
+            return (String) session.getAttribute(SessionKeys.VISITOR_ID);
+        }
+        return null;
     }
 
     /**
@@ -48,7 +73,11 @@ public class CartController {
      */
     @PostMapping("/api/cart/items")
     public CartResponse addToCart(@RequestBody AddToCartRequest req) {
-        return cartService.addToCart(req, currentSession());
+        CartResponse result = cartService.addToCart(req, currentSession());
+        // Ghi tracking ADD_TO_CART
+        activityTracker.record(EventType.ADD_TO_CART, currentVisitorId(), currentUserId(),
+                req.productId(), null, null);
+        return result;
     }
 
     /**
