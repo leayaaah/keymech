@@ -40,7 +40,8 @@ public class EmailService {
             String html = templateEngine.process("mail/welcome", context);
             sendHtmlEmail(toEmail, "Chào mừng bạn đến với cửa hàng bàn phím cơ", html);
         } catch (Exception e) {
-            log.warn("Không thể gửi email chào mừng tới {}: {}", maskEmail(toEmail), e.getMessage());
+            log.warn("Không thể gửi email chào mừng tới {}: {}", maskEmail(toEmail),
+                e.getClass().getSimpleName());
         }
     }
 
@@ -54,7 +55,8 @@ public class EmailService {
             String html = templateEngine.process("mail/reset-code", context);
             sendHtmlEmail(toEmail, "Mã xác thực đặt lại mật khẩu", html);
         } catch (Exception e) {
-            log.warn("Không thể gửi email mã xác thực tới {}: {}", maskEmail(toEmail), e.getMessage());
+            log.warn("Không thể gửi email mã xác thực tới {}: {}", maskEmail(toEmail),
+                e.getClass().getSimpleName());
         }
     }
 
@@ -74,7 +76,8 @@ public class EmailService {
             String html = templateEngine.process("mail/order", context);
             sendHtmlEmail(toEmail, "Xác nhận đơn hàng " + data.orderCode(), html);
         } catch (Exception e) {
-            log.warn("Không thể gửi email xác nhận đơn hàng tới {}: {}", maskEmail(toEmail), e.getMessage());
+            log.warn("Không thể gửi email xác nhận đơn hàng tới {}: {}", maskEmail(toEmail),
+                e.getClass().getSimpleName());
         }
     }
 
@@ -89,7 +92,8 @@ public class EmailService {
             String html = templateEngine.process("mail/custom-status", context);
             sendHtmlEmail(toEmail, "Cập nhật yêu cầu Custom " + data.requestCode(), html);
         } catch (Exception e) {
-            log.warn("Không thể gửi email cập nhật Custom tới {}: {}", maskEmail(toEmail), e.getMessage());
+            log.warn("Không thể gửi email cập nhật Custom tới {}: {}", maskEmail(toEmail),
+                e.getClass().getSimpleName());
         }
     }
 
