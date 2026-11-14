@@ -182,7 +182,8 @@ public class AuthService {
 
         HttpSession session = httpRequest.getSession(false);
         if (session == null) {
-            throw new InvalidCodeException("INVALID_CODE", "Phiên làm việc đã hết hạn, vui lòng yêu cầu mã mới");
+            throw new InvalidCodeException("INVALID_CODE",
+                "Phiên làm việc đã hết hạn, vui lòng yêu cầu mã mới");
         }
 
         String storedHash = (String) session.getAttribute(SessionKeys.RESET_CODE + "_" + email);
@@ -200,7 +201,8 @@ public class AuthService {
 
         if (attempts != null && attempts >= 5) {
             clearResetCode(session, email);
-            throw new InvalidCodeException("INVALID_CODE", "Nhập sai quá nhiều lần, vui lòng yêu cầu mã mới");
+            throw new InvalidCodeException("INVALID_CODE",
+                "Nhập sai quá nhiều lần, vui lòng yêu cầu mã mới");
         }
 
         byte[] codeHash = hashResetCode(code).getBytes(StandardCharsets.UTF_8);

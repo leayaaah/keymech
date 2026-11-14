@@ -115,7 +115,8 @@ class AuthServiceTest {
     class LoginTests {
 
         @Test
-        @DisplayName("TC-SEC-07: Guest có giỏ, đăng nhập Customer - đổi session id, giữ giỏ, không invalidate")
+        @DisplayName("TC-SEC-07: Guest có giỏ, đăng nhập Customer - đổi session id, "
+            + "giữ giỏ, không invalidate")
         void login_customer_keepsCart_changesSessionId() {
             MockHttpServletRequest request = new MockHttpServletRequest();
             MockHttpSession session = new MockHttpSession();
@@ -289,7 +290,8 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("TC-PWD-03: Quên mật khẩu email không tồn tại - trả về mà không ném lỗi (tránh dò email)")
+        @DisplayName("TC-PWD-03: Quên mật khẩu email không tồn tại - "
+            + "trả về mà không ném lỗi (tránh dò email)")
         void forgotPassword_emailNotExists_noException() {
             ForgotPasswordRequest request = new ForgotPasswordRequest("notexist@example.com");
             when(userRepository.findByEmail("notexist@example.com")).thenReturn(Optional.empty());

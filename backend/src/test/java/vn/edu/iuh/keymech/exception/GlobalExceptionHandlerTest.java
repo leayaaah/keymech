@@ -31,7 +31,8 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("InvalidPasswordException -> 400 INVALID_PASSWORD")
     void invalidPassword_returns400() {
-        var res = handler.invalidPassword(new InvalidPasswordException("INVALID_PASSWORD", "Mật khẩu cũ không đúng"));
+        var res = handler.invalidPassword(new InvalidPasswordException(
+            "INVALID_PASSWORD", "Mật khẩu cũ không đúng"));
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(res.getBody().error()).isEqualTo("INVALID_PASSWORD");
         assertThat(res.getBody().message()).isEqualTo("Mật khẩu cũ không đúng");
@@ -49,7 +50,8 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("BusinessException -> 409 (không đổi)")
     void business_returns409() {
-        var res = handler.business(new vn.edu.iuh.keymech.exception.BusinessException("FORBIDDEN", "Đã đăng nhập"));
+        var res = handler.business(new vn.edu.iuh.keymech.exception.BusinessException(
+            "FORBIDDEN", "Đã đăng nhập"));
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(res.getBody().error()).isEqualTo("FORBIDDEN");
     }

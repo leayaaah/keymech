@@ -92,7 +92,8 @@ class AdminUserControllerTest {
     void toggleVisibility_adminAccount_forbidden() {
         AdminUserService svc = mock(AdminUserService.class);
         AdminUserController c = new AdminUserController(svc);
-        doThrow(new vn.edu.iuh.keymech.exception.BusinessException("FORBIDDEN", "Không thể ẩn/hiện tài khoản Admin"))
+        doThrow(new vn.edu.iuh.keymech.exception.BusinessException(
+            "FORBIDDEN", "Không thể ẩn/hiện tài khoản Admin"))
             .when(svc).toggleUserVisibility(1L);
 
         try {

@@ -46,7 +46,8 @@ class AuthControllerTest {
         AuthController c = new AuthController(svc);
         RegisterRequest req = new RegisterRequest("T", "t@x.com", "password123", null, null);
         when(svc.register(any(RegisterRequest.class)))
-            .thenThrow(new vn.edu.iuh.keymech.exception.BusinessException("EMAIL_EXISTS", "Email đã được đăng ký"));
+            .thenThrow(new vn.edu.iuh.keymech.exception.BusinessException(
+                "EMAIL_EXISTS", "Email đã được đăng ký"));
 
         try {
             c.register(req, null);
