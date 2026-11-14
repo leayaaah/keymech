@@ -35,6 +35,7 @@ import vn.edu.iuh.keymech.util.SessionKeys;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.Map;
@@ -43,6 +44,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @Transactional
 public class AuthService {
+    private static final int MAX_RESET_REQUESTS_PER_WINDOW = 5;
+    private static final long RESET_REQUEST_WINDOW_MILLIS = 60 * 60 * 1000L;
+    private static final long RESET_REQUEST_INTERVAL_MILLIS = 60 * 1000L;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -50,10 +54,10 @@ public class AuthService {
     private final SecurityContextRepository securityContextRepository;
     private final EmailService emailService;
     private final CodeGenerator codeGenerator;
+    private Clock clock = Clock.systemUTC();
 
     // In-memory rate limiter for forgot password: email -> count
-    private final Map<String, Integer> resetRequestCount = new ConcurrentHashMap<>();
-    private final Map<String, Long> lastResetRequestTime = new ConcurrentHashMap<>();
+    private final Map<String, ResetRequestWindow> resetRequestWindows = new ConcurrentHashMap<>();
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
@@ -152,21 +156,14 @@ public class AuthService {
 
     public void forgotPassword(ForgotPasswordRequest request, HttpServletRequest httpRequest) {
         String email = request.email();
+        long now = clock.millis();
+        removeExpiredResetRequests(now);
         User user = userRepository.findByEmail(email).orElse(null);
 
         // Always return same message to prevent email enumeration
         if (user != null && user.isEnabled()) {
             // Rate limiting: max 5 requests per hour per email
-            long now = System.currentTimeMillis();
-            Long lastTime = lastResetRequestTime.get(email);
-            if (lastTime != null && now - lastTime < 60_000) { // 60 seconds
-                // Silently ignore, still return same message
-                return;
-            }
-
-            Integer count = resetRequestCount.getOrDefault(email, 0);
-            if (count >= 5) {
-                // Silently ignore
+            if (!registerResetRequest(email, now)) {
                 return;
             }
 
@@ -179,10 +176,6 @@ public class AuthService {
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email, codeHash);
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_expires", LocalDateTime.now().plusMinutes(10));
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts", 0);
-
-            // Update rate limiter
-            resetRequestCount.put(email, count + 1);
-            lastResetRequestTime.put(email, now);
 
             // Send email asynchronously
             emailService.sendResetPasswordEmail(user.getEmail(), code);
@@ -275,6 +268,30 @@ public class AuthService {
         session.removeAttribute(SessionKeys.RESET_CODE + "_" + email + "_expires");
         session.removeAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts");
     }
+
+    private synchronized boolean registerResetRequest(String email, long now) {
+        ResetRequestWindow window = resetRequestWindows.get(email);
+        if (window == null) {
+            resetRequestWindows.put(email, new ResetRequestWindow(1, now, now));
+            return true;
+        }
+
+        if (window.requestCount() >= MAX_RESET_REQUESTS_PER_WINDOW
+                || now - window.lastRequestAt() < RESET_REQUEST_INTERVAL_MILLIS) {
+            return false;
+        }
+
+        resetRequestWindows.put(email,
+            new ResetRequestWindow(window.requestCount() + 1, window.windowStartedAt(), now));
+        return true;
+    }
+
+    private synchronized void removeExpiredResetRequests(long now) {
+        resetRequestWindows.entrySet().removeIf(entry ->
+            now - entry.getValue().windowStartedAt() >= RESET_REQUEST_WINDOW_MILLIS);
+    }
+
+    private record ResetRequestWindow(int requestCount, long windowStartedAt, long lastRequestAt) {}
 
     private String hashResetCode(String code) {
         try {

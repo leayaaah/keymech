@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -37,7 +38,10 @@ import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.security.AppUserDetails;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -271,6 +275,10 @@ class AuthServiceTest {
     @Nested
     @DisplayName("TC-PWD-02, TC-PWD-03, TC-PWD-04: Quên mật khẩu")
     class ForgotPasswordTests {
+        private void setCurrentTime(long timestamp) {
+            ReflectionTestUtils.setField(authService, "clock",
+                Clock.fixed(Instant.ofEpochMilli(timestamp), ZoneOffset.UTC));
+        }
 
         @Test
         @DisplayName("TC-PWD-03: Quên mật khẩu email không tồn tại - trả về mà không ném lỗi (tránh dò email)")
@@ -317,6 +325,45 @@ class AuthServiceTest {
             ArgumentCaptor<String> codeCaptor = ArgumentCaptor.forClass(String.class);
             verify(emailService, times(1)).sendResetPasswordEmail(eq("test@example.com"), codeCaptor.capture());
             assertThat(codeCaptor.getValue()).matches("\\d{6}");
+        }
+
+        @Test
+        @DisplayName("TC-PWD-05: Quá 5 yêu cầu trong một giờ thì bỏ qua yêu cầu tiếp theo")
+        void forgotPassword_exceedsFiveRequestsInWindow_ignoresFurtherRequests() {
+            String email = "test@example.com";
+            User user = new User();
+            user.setEmail(email);
+            user.setEnabled(true);
+            when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+            long start = 1_000_000L;
+            for (int requestNumber = 0; requestNumber < 6; requestNumber++) {
+                setCurrentTime(start + requestNumber * 60_000L);
+                authService.forgotPassword(new ForgotPasswordRequest(email), new MockHttpServletRequest());
+            }
+
+            verify(emailService, times(5)).sendResetPasswordEmail(eq(email), anyString());
+        }
+
+        @Test
+        @DisplayName("TC-PWD-06: Cửa sổ một giờ mới cho phép yêu cầu lại")
+        void forgotPassword_newWindow_allowsRequestAgain() {
+            String email = "test@example.com";
+            User user = new User();
+            user.setEmail(email);
+            user.setEnabled(true);
+            when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+            long start = 1_000_000L;
+            for (int requestNumber = 0; requestNumber < 5; requestNumber++) {
+                setCurrentTime(start + requestNumber * 60_000L);
+                authService.forgotPassword(new ForgotPasswordRequest(email), new MockHttpServletRequest());
+            }
+
+            setCurrentTime(start + 60 * 60 * 1000L + 1);
+            authService.forgotPassword(new ForgotPasswordRequest(email), new MockHttpServletRequest());
+
+            verify(emailService, times(6)).sendResetPasswordEmail(eq(email), anyString());
         }
     }
 
