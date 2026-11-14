@@ -22,6 +22,10 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.edu.iuh.keymech.dto.ChangePasswordRequest;
 import vn.edu.iuh.keymech.dto.ForgotPasswordRequest;
 import vn.edu.iuh.keymech.dto.LoginRequest;
@@ -69,6 +73,29 @@ class AuthServiceTest {
         SecurityContextHolder.clearContext();
     }
 
+    private static class TestTransactionManager extends AbstractPlatformTransactionManager {
+        private boolean committed;
+        private boolean rolledBack;
+
+        @Override
+        protected Object doGetTransaction() {
+            return new Object();
+        }
+
+        @Override
+        protected void doBegin(Object transaction, TransactionDefinition definition) {}
+
+        @Override
+        protected void doCommit(DefaultTransactionStatus status) {
+            committed = true;
+        }
+
+        @Override
+        protected void doRollback(DefaultTransactionStatus status) {
+            rolledBack = true;
+        }
+    }
+
     @Nested
     @DisplayName("TC-REG: Đăng ký")
     class RegisterTests {
@@ -86,8 +113,15 @@ class AuthServiceTest {
                 return u;
             });
 
-            UserResponse response = authService.register(request);
+            TestTransactionManager transactionManager = new TestTransactionManager();
+            TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+            UserResponse response = transaction.execute(status -> {
+                UserResponse result = authService.register(request);
+                verify(emailService, never()).sendWelcomeEmail(anyString(), anyString());
+                return result;
+            });
 
+            assertThat(transactionManager.committed).isTrue();
             assertThat(response.email()).isEqualTo("test@example.com");
             assertThat(response.fullName()).isEqualTo("Nguyễn Văn A");
             assertThat(response.role()).isEqualTo("CUSTOMER");
@@ -95,6 +129,32 @@ class AuthServiceTest {
 
             verify(userRepository).save(any(User.class));
             verify(emailService).sendWelcomeEmail("test@example.com", "Nguyễn Văn A");
+        }
+
+        @Test
+        @DisplayName("TC-REG-03: Rollback đăng ký - không gửi email chào mừng")
+        void register_rollback_doesNotSendWelcomeEmail() {
+            RegisterRequest request = new RegisterRequest(
+                "Nguyễn Văn A", "test@example.com", "password123", "0909123456", "Hà Nội");
+            when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
+            when(passwordEncoder.encode("password123")).thenReturn("$2a$10$encoded");
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                u.setId(1L);
+                return u;
+            });
+
+            TestTransactionManager transactionManager = new TestTransactionManager();
+            TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+            transaction.execute(status -> {
+                authService.register(request);
+                verify(emailService, never()).sendWelcomeEmail(anyString(), anyString());
+                status.setRollbackOnly();
+                return null;
+            });
+
+            assertThat(transactionManager.rolledBack).isTrue();
+            verify(emailService, never()).sendWelcomeEmail(anyString(), anyString());
         }
 
         @Test

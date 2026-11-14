@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.edu.iuh.keymech.dto.ChangePasswordRequest;
 import vn.edu.iuh.keymech.dto.ForgotPasswordRequest;
 import vn.edu.iuh.keymech.dto.LoginRequest;
@@ -129,8 +131,12 @@ public class AuthService {
 
         User saved = userRepository.save(user);
 
-        // Gửi email chào mừng bất đồng bộ
-        emailService.sendWelcomeEmail(saved.getEmail(), saved.getFullName());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                emailService.sendWelcomeEmail(saved.getEmail(), saved.getFullName());
+            }
+        });
 
         return toResponse(saved);
     }
