@@ -80,7 +80,8 @@ class UserMeControllerTest {
     void updateProfile_success() {
         AuthService svc = mock(AuthService.class);
         UserMeController c = new UserMeController(svc);
-        UserResponse resp = new UserResponse(1L, "Nguyễn Văn B", "test@example.com", "0912", "Address", "CUSTOMER", true);
+        UserResponse resp = new UserResponse(
+            1L, "Nguyễn Văn B", "test@example.com", "0912", "Address", "CUSTOMER", true);
         when(svc.updateProfile(any(UpdateProfileRequest.class), any(Authentication.class))).thenReturn(resp);
         Authentication auth = new UsernamePasswordAuthenticationToken(
             "test@example.com", "pw", List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));

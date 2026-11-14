@@ -166,7 +166,8 @@ public class AuthService {
             // Lưu vào phiên
             HttpSession session = httpRequest.getSession(true);
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email, codeHash);
-            session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_expires", LocalDateTime.now().plusMinutes(10));
+            session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_expires",
+                LocalDateTime.now().plusMinutes(10));
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts", 0);
 
             // Gửi email bất đồng bộ

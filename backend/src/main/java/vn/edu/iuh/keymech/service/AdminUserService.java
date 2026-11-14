@@ -59,7 +59,8 @@ public class AdminUserService {
         return toResponse(saved);
     }
 
-    public UserResponse updateUser(Long id, String fullName, String phone, String address, Authentication authentication) {
+    public UserResponse updateUser(Long id, String fullName, String phone, String address,
+                                   Authentication authentication) {
         User target = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 

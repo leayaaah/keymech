@@ -54,7 +54,9 @@ public class AuthController {
     public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
                                                            HttpServletRequest httpRequest) {
         authService.forgotPassword(request, httpRequest);
-        return ResponseEntity.ok(new MessageResponse("Nếu email tồn tại và tài khoản đang hoạt động, mã xác thực đã được gửi"));
+        return ResponseEntity.ok(new MessageResponse(
+            "Nếu email tồn tại và tài khoản đang hoạt động, "
+                + "mã xác thực đã được gửi"));
     }
 
     @PostMapping("/reset-password")

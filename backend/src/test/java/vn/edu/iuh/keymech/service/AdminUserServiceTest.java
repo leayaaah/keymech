@@ -96,7 +96,8 @@ class AdminUserServiceTest {
         @DisplayName("TC-SEC-17: Tạo Staff với role ADMIN trong body - vẫn tạo STAFF")
         void createStaff_roleInBodyIgnored_createsStaff() {
             // Given
-            CreateStaffRequest request = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
+            CreateStaffRequest request = new CreateStaffRequest(
+                "New Staff", "newstaff@example.com", "password123", "0909", "Address");
             when(userRepository.existsByEmail("newstaff@example.com")).thenReturn(false);
             when(passwordEncoder.encode("password123")).thenReturn("$2a$10$encoded");
             when(userRepository.save(any(User.class))).thenAnswer(inv -> {
@@ -117,7 +118,8 @@ class AdminUserServiceTest {
         @DisplayName("TC-SEC-17: Tạo Staff email trùng - ném BusinessException EMAIL_EXISTS")
         void createStaff_emailExists_throwsException() {
             // Given
-            CreateStaffRequest request = new CreateStaffRequest("New Staff", "staff@example.com", "password123", null, null);
+            CreateStaffRequest request = new CreateStaffRequest(
+                "New Staff", "staff@example.com", "password123", null, null);
             when(userRepository.existsByEmail("staff@example.com")).thenReturn(true);
 
             // When / Then

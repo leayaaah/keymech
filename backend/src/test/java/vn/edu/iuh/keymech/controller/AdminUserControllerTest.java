@@ -33,7 +33,8 @@ class AdminUserControllerTest {
         UserResponse admin = new UserResponse(1L, "Admin", "admin@example.com", null, null, "ADMIN", true);
         UserResponse staff = new UserResponse(2L, "Staff", "staff@example.com", null, null, "STAFF", true);
         Page<UserResponse> page = new PageImpl<>(List.of(admin, staff));
-        when(svc.getUsers(anyString(), any(Role.class), any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
+        when(svc.getUsers(anyString(), any(Role.class),
+            any(org.springframework.data.domain.Pageable.class))).thenReturn(page);
 
         ResponseEntity<Page<UserResponse>> res = c.getUsers(null, Role.ADMIN, null);
 
@@ -59,7 +60,8 @@ class AdminUserControllerTest {
     void createStaff_success() {
         AdminUserService svc = mock(AdminUserService.class);
         AdminUserController c = new AdminUserController(svc);
-        CreateStaffRequest req = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
+        CreateStaffRequest req = new CreateStaffRequest(
+            "New Staff", "newstaff@example.com", "password123", "0909", "Address");
         UserResponse resp = new UserResponse(3L, "New Staff", "newstaff@example.com", "0909", "Address", "STAFF", true);
         when(svc.createStaff(req)).thenReturn(resp);
 
@@ -74,8 +76,10 @@ class AdminUserControllerTest {
     void createStaff_staff_forbidden() {
         AdminUserService svc = mock(AdminUserService.class);
         AdminUserController c = new AdminUserController(svc);
-        CreateStaffRequest req = new CreateStaffRequest("New Staff", "newstaff@example.com", "password123", "0909", "Address");
-        when(svc.createStaff(any(CreateStaffRequest.class))).thenReturn(new UserResponse(3L, "N", "n@x.com", null, null, "STAFF", true));
+        CreateStaffRequest req = new CreateStaffRequest(
+            "New Staff", "newstaff@example.com", "password123", "0909", "Address");
+        when(svc.createStaff(any(CreateStaffRequest.class))).thenReturn(
+            new UserResponse(3L, "N", "n@x.com", null, null, "STAFF", true));
 
         ResponseEntity<UserResponse> res = c.createStaff(req);
 
@@ -117,7 +121,8 @@ class AdminUserControllerTest {
     void updateUser_success() {
         AdminUserService svc = mock(AdminUserService.class);
         AdminUserController c = new AdminUserController(svc);
-        UserResponse resp = new UserResponse(2L, "Updated Staff", "staff@example.com", "0912", "New Address", "STAFF", true);
+        UserResponse resp = new UserResponse(2L, "Updated Staff", "staff@example.com",
+            "0912", "New Address", "STAFF", true);
         when(svc.updateUser(eq(2L), anyString(), anyString(), anyString(), any())).thenReturn(resp);
 
         ResponseEntity<UserResponse> res = c.updateUser(2L, "Updated Staff", "0912", "New Address", null);

@@ -76,7 +76,8 @@ class AuthServiceTest {
         @Test
         @DisplayName("TC-REG-01: Đăng ký thành công - tạo user CUSTOMER, gửi email chào mừng")
         void register_success() {
-            RegisterRequest request = new RegisterRequest("Nguyễn Văn A", "test@example.com", "password123", "0909123456", "Hà Nội");
+            RegisterRequest request = new RegisterRequest(
+                "Nguyễn Văn A", "test@example.com", "password123", "0909123456", "Hà Nội");
             when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
             when(passwordEncoder.encode("password123")).thenReturn("$2a$10$encoded");
             when(userRepository.save(any(User.class))).thenAnswer(inv -> {
@@ -99,7 +100,8 @@ class AuthServiceTest {
         @Test
         @DisplayName("TC-REG-02: Đăng ký email trùng - ném BusinessException EMAIL_EXISTS")
         void register_emailExists_throwsException() {
-            RegisterRequest request = new RegisterRequest("Nguyễn Văn A", "test@example.com", "password123", null, null);
+            RegisterRequest request = new RegisterRequest(
+                "Nguyễn Văn A", "test@example.com", "password123", null, null);
             when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
 
             assertThatThrownBy(() -> authService.register(request))
@@ -129,7 +131,8 @@ class AuthServiceTest {
             user.setEnabled(true);
 
             AppUserDetails userDetails = new AppUserDetails(user);
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
             when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(user));
             when(authenticationManager.authenticate(any())).thenReturn(auth);
@@ -160,7 +163,8 @@ class AuthServiceTest {
             user.setEnabled(true);
 
             AppUserDetails userDetails = new AppUserDetails(user);
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
             when(userRepository.findByEmail("staff@example.com")).thenReturn(Optional.of(user));
             when(authenticationManager.authenticate(any())).thenReturn(auth);
@@ -189,7 +193,8 @@ class AuthServiceTest {
             user.setEnabled(true);
 
             AppUserDetails userDetails = new AppUserDetails(user);
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
             when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(user));
             when(authenticationManager.authenticate(any())).thenReturn(auth);
@@ -230,7 +235,8 @@ class AuthServiceTest {
     class ChangePasswordTests {
 
         @Test
-        @DisplayName("TC-PWD-01: Đổi mật khẩu với mật khẩu cũ sai - ném InvalidPasswordException INVALID_PASSWORD (400)")
+        @DisplayName("TC-PWD-01: Đổi mật khẩu với mật khẩu cũ sai - ném "
+            + "InvalidPasswordException INVALID_PASSWORD (400)")
         void changePassword_wrongOldPassword_throwsException() {
             ChangePasswordRequest request = new ChangePasswordRequest("wrongOld", "newPassword123");
             User user = new User();
@@ -239,7 +245,8 @@ class AuthServiceTest {
             user.setPassword("$2a$10$encoded");
 
             AppUserDetails userDetails = new AppUserDetails(user);
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("wrongOld", "$2a$10$encoded")).thenReturn(false);
@@ -259,7 +266,8 @@ class AuthServiceTest {
             user.setPassword("$2a$10$encoded");
 
             AppUserDetails userDetails = new AppUserDetails(user);
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("correctOld", "$2a$10$encoded")).thenReturn(true);
@@ -414,7 +422,8 @@ class AuthServiceTest {
             MockHttpServletRequest request = new MockHttpServletRequest();
             MockHttpSession session = new MockHttpSession();
             request.setSession(session);
-            session.setAttribute("resetCode_test@example.com", "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92");
+            session.setAttribute("resetCode_test@example.com",
+                "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92");
             session.setAttribute("resetCode_test@example.com_expires", LocalDateTime.now().plusMinutes(5));
             session.setAttribute("resetCode_test@example.com_attempts", 0);
 
@@ -467,7 +476,8 @@ class AuthServiceTest {
             user.setEnabled(true);
 
             AppUserDetails userDetails = new AppUserDetails(user);
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
