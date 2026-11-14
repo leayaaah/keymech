@@ -56,7 +56,7 @@ public class AuthService {
     private final CodeGenerator codeGenerator;
     private Clock clock = Clock.systemUTC();
 
-    // In-memory rate limiter for forgot password: email -> count
+    // Bộ giới hạn yêu cầu đặt lại mật khẩu trong bộ nhớ: email -> trạng thái cửa sổ
     private final Map<String, ResetRequestWindow> resetRequestWindows = new ConcurrentHashMap<>();
 
     public AuthService(UserRepository userRepository,
@@ -74,7 +74,7 @@ public class AuthService {
     }
 
     public UserResponse login(LoginRequest request, HttpServletRequest httpRequest) {
-        // Authenticate; mọi thất bại xác thực -> INVALID_CREDENTIALS (401)
+        // Xác thực; mọi lỗi xác thực đều trả về INVALID_CREDENTIALS (401)
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -88,16 +88,16 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
-        // Change session ID to prevent session fixation (không invalidate session cũ)
+        // Đổi mã phiên để ngăn chiếm quyền phiên mà không vô hiệu hóa phiên cũ
         HttpSession session = httpRequest.getSession(true);
         httpRequest.changeSessionId();
 
-        // Staff/Admin: xóa giỏ. Customer: giữ nguyên giỏ trong phiên.
+        // Nhân viên/Admin xóa giỏ; khách hàng giữ nguyên giỏ trong phiên.
         if (userDetails.getRole().equals("STAFF") || userDetails.getRole().equals("ADMIN")) {
             session.removeAttribute(SessionKeys.CART);
         }
 
-        // Save SecurityContext
+        // Lưu ngữ cảnh bảo mật
         SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
         securityContext.setAuthentication(authentication);
         securityContextRepository.saveContext(securityContext, httpRequest, null);
@@ -129,7 +129,7 @@ public class AuthService {
 
         User saved = userRepository.save(user);
 
-        // Send welcome email asynchronously
+        // Gửi email chào mừng bất đồng bộ
         emailService.sendWelcomeEmail(saved.getEmail(), saved.getFullName());
 
         return toResponse(saved);
@@ -152,27 +152,27 @@ public class AuthService {
         removeExpiredResetRequests(now);
         User user = userRepository.findByEmail(email).orElse(null);
 
-        // Always return same message to prevent email enumeration
+        // Luôn trả cùng thông báo để tránh dò tìm email
         if (user != null && user.isEnabled()) {
-            // Rate limiting: max 5 requests per hour per email
+            // Giới hạn tối đa 5 yêu cầu mỗi giờ cho mỗi email
             if (!registerResetRequest(email, now)) {
                 return;
             }
 
-            // Generate 6-digit code
+            // Tạo mã gồm 6 chữ số
             String code = codeGenerator.resetCode();
             String codeHash = hashResetCode(code);
 
-            // Store in session
+            // Lưu vào phiên
             HttpSession session = httpRequest.getSession(true);
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email, codeHash);
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_expires", LocalDateTime.now().plusMinutes(10));
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts", 0);
 
-            // Send email asynchronously
+            // Gửi email bất đồng bộ
             emailService.sendResetPasswordEmail(user.getEmail(), code);
         }
-        // Always return without revealing whether email exists
+        // Luôn trả về mà không tiết lộ email có tồn tại hay không
     }
 
     public void resetPassword(ResetPasswordRequest request, HttpServletRequest httpRequest) {
@@ -210,14 +210,14 @@ public class AuthService {
             throw new InvalidCodeException("INVALID_CODE", "Mã xác thực không đúng");
         }
 
-        // Valid code - update password
+        // Mã hợp lệ: cập nhật mật khẩu
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
 
-        // Clear reset code from session
+        // Xóa mã đặt lại khỏi phiên
         clearResetCode(session, email);
     }
 

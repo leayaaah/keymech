@@ -52,7 +52,7 @@ public class AdminUserService {
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setPhone(request.phone());
         user.setAddress(request.address());
-        user.setRole(Role.STAFF); // Hardcoded to STAFF
+        user.setRole(Role.STAFF); // Cố định vai trò là nhân viên
         user.setEnabled(true);
 
         User saved = userRepository.save(user);
@@ -63,13 +63,13 @@ public class AdminUserService {
         User target = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        // Cannot modify ADMIN account
+        // Không thể chỉnh sửa tài khoản quản trị
         if (target.getRole() == Role.ADMIN) {
             throw new BusinessException("FORBIDDEN", "Không thể sửa tài khoản Admin");
         }
 
-        // Check if current user is trying to modify their own role (not allowed anyway)
-        // Role is not in the update fields
+        // Kiểm tra người dùng có đang tự sửa vai trò hay không
+        // Vai trò không nằm trong các trường được cập nhật
 
         target.setFullName(fullName);
         target.setPhone(phone);
