@@ -16,17 +16,20 @@ export function ProductDetailPage() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let ignore = false;
     productApi
       .detail(parseInt(id, 10))
       .then((data) => {
-        setProduct(data);
-        setLoading(false);
+        if (!ignore) {
+          setProduct(data);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        setError(err?.message || 'Không tìm thấy sản phẩm');
-        setLoading(false);
+        if (!ignore) {
+          setError(err?.message || 'Không tìm thấy sản phẩm');
+          setLoading(false);
+        }
       });
   }, [id]);
 
@@ -78,9 +81,10 @@ export function ProductDetailPage() {
               <InfoRow label="Kho" value={`${product.stockQuantity} còn`} highlight={product.stockQuantity > 0 ? false : true} />
             </div>
 
-            {product.specs && (
+            {(product.description || product.specs) && (
               <div style={{ fontSize: '0.85rem', color: '#4b5563', background: '#f9fafb', padding: '0.75rem', borderRadius: '6px' }}>
-                <strong>Mô tả:</strong> {product.specs}
+                {product.description && <div style={{ marginBottom: '0.5rem' }}><strong>Mô tả:</strong> {product.description}</div>}
+                {product.specs && <div><strong>Thông số:</strong> {product.specs}</div>}
               </div>
             )}
 

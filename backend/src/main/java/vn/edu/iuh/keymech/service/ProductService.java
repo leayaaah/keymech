@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,21 +36,19 @@ public class ProductService {
      * G-01: Danh sách sản phẩm đang hiện, có lọc và phân trang.
      * page = 0-based; size = số sản phẩm mỗi trang (12 ở frontend).
      * Trang rỗng trả về content rỗng (không ném lỗi).
+     * page/size null → dùng 0 và 12 (frontend default).
      */
     @Transactional(readOnly = true)
     public Page<ProductsResponse> list(ProductsFilterRequest f) {
-        int page = Math.max(f.page(), 0);
-        int size = Math.max(f.size(), 1);
+        int page = f.page() != null ? Math.max(f.page(), 0) : 0;
+        int size = f.size() != null ? Math.max(f.size(), 12) : 12;
         PageRequest pageRequest = PageRequest.of(page, size, sort(f.sort()));
 
-        Page<Product> pageProduct;
-        if (f.categoryId() != null) {
-            pageProduct = productRepository.findByCategoryIdAndStatus(
-                    f.categoryId(), VisibilityStatus.ACTIVE, pageRequest);
-        } else {
-            pageProduct = productRepository.findByStatus(VisibilityStatus.ACTIVE, pageRequest);
-        }
+        Specification<Product> spec = ProductRepository.withFilters(
+                f.categoryId(), f.brand(), f.layout(),
+                f.minPrice(), f.maxPrice(), f.keyword());
 
+        Page<Product> pageProduct = productRepository.findAll(spec, pageRequest);
         return pageProduct.map(this::toResponse);
     }
 

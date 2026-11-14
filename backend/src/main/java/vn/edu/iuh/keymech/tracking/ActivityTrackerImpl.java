@@ -7,25 +7,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
+import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.UserActivity;
 import vn.edu.iuh.keymech.model.enums.EventType;
+import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserActivityRepository;
+import vn.edu.iuh.keymech.repository.UserRepository;
 
 /**
  * Implementation ActivityTracker — ghi sự kiện hành vi bất đồng bộ.
- * Bỏ qua Staff và Admin; không ghi IP/User-Agent.
- * Lỗi chỉ ghi log, không làm chậm request chính.
+ * Chỉ ghi Guest (visitorId) và Customer; Staff và Admin bị bỏ qua.
+ * Không ghi IP/User-Agent. Lỗi chỉ ghi log, không làm chậm request chính.
  *
- * Lưu ý: Phương sở hữu package tracking.
+ * Lưu ý: Phương sở hữu package tracking; Thuận và Thùy chỉ gọi.
  */
 @Slf4j
 @Service
 public class ActivityTrackerImpl implements ActivityTracker {
 
     private final UserActivityRepository userActivityRepository;
+    private final UserRepository userRepository;
 
-    public ActivityTrackerImpl(UserActivityRepository userActivityRepository) {
+    public ActivityTrackerImpl(UserActivityRepository userActivityRepository,
+                               UserRepository userRepository) {
         this.userActivityRepository = userActivityRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -36,8 +42,14 @@ public class ActivityTrackerImpl implements ActivityTracker {
         try {
             // Không ghi sự kiện của Staff và Admin
             if (userId != null) {
-                // caller đã kiểm tra role; nếu là Staff/ADMIN thì bỏ qua
-                // (ở đây chỉ kiểm tra đơn giản: caller phải đã filter trước)
+                User u = userRepository.findById(userId).orElse(null);
+                if (u == null || u.getRole() == Role.STAFF || u.getRole() == Role.ADMIN) {
+                    return;
+                }
+            }
+            // Guest không có visitorId thì bỏ qua (không thể ghi)
+            if (userId == null && (visitorId == null || visitorId.isBlank())) {
+                return;
             }
 
             UserActivity a = new UserActivity();

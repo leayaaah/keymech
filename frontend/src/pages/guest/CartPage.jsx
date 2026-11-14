@@ -154,8 +154,8 @@ export function CartPage() {
               <span>Tổng cộng</span>
               <span style={{ color: '#dc2626' }}>{formatVND(totalAmount)}</span>
             </div>
-            <Link to="/checkout" style={{ display: 'block', textAlign: 'center', padding: '0.75rem', backgroundColor: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, marginTop: '1rem' }}>
-              Tiến hành thanh toán
+            <Link to="/products" style={{ display: 'block', textAlign: 'center', padding: '0.75rem', backgroundColor: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, marginTop: '1rem' }}>
+              Tiếp tục mua sắm
             </Link>
           </div>
         </div>

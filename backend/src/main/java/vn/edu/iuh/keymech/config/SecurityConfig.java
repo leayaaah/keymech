@@ -21,6 +21,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import vn.edu.iuh.keymech.filter.VisitorFilter;
 import vn.edu.iuh.keymech.security.CartAccessManager;
 
 @Configuration
@@ -50,6 +51,11 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/api/**", cfg);
         return src;
+    }
+
+    @Bean
+    VisitorFilter visitorFilter() {
+        return new VisitorFilter();
     }
 
     @Bean

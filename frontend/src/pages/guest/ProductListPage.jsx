@@ -62,8 +62,7 @@ export function ProductListPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let ignore = false;
 
     const params = {};
     if (keyword) params.keyword = keyword;
@@ -77,14 +76,18 @@ export function ProductListPage() {
     productApi
       .list(params)
       .then((res) => {
-        setProducts(res.content ?? []);
-        setTotalPages(res.totalPages ?? 1);
-        setTotalElements(res.totalElements ?? 0);
-        setLoading(false);
+        if (!ignore) {
+          setProducts(res.content ?? []);
+          setTotalPages(res.totalPages ?? 1);
+          setTotalElements(res.totalElements ?? 0);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        setError(err?.message || 'Không thể tải danh sách sản phẩm');
-        setLoading(false);
+        if (!ignore) {
+          setError(err?.message || 'Không thể tải danh sách sản phẩm');
+          setLoading(false);
+        }
       });
   }, [page, keyword, categoryId, brand, layout, sort]);
 
