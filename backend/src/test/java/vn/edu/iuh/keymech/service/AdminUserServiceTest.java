@@ -184,7 +184,7 @@ class AdminUserServiceTest {
         void getUsers_filterByRole() {
             // Given
             Page<User> page = new PageImpl<>(List.of(staffUser));
-            when(userRepository.findByRole(Role.STAFF, any(Pageable.class))).thenReturn(page);
+            when(userRepository.findByRole(eq(Role.STAFF), any(Pageable.class))).thenReturn(page);
 
             // When
             Page<UserResponse> result = adminUserService.getUsers(null, Role.STAFF, Pageable.unpaged());
