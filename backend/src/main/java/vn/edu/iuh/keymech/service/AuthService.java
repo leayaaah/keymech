@@ -88,21 +88,13 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
 
-        // Lưu giỏ từ session cũ (nếu có) trước khi đổi id
-        HttpSession oldSession = httpRequest.getSession(false);
-        Object cart = oldSession != null ? oldSession.getAttribute(SessionKeys.CART) : null;
-
         // Change session ID to prevent session fixation (không invalidate session cũ)
         HttpSession session = httpRequest.getSession(true);
         httpRequest.changeSessionId();
-        // Lấy lại session mới sau khi đổi id
-        session = httpRequest.getSession(false);
 
-        // Staff/Admin: xóa giỏ. Customer: restore giỏ cũ vào session mới.
+        // Staff/Admin: xóa giỏ. Customer: giữ nguyên giỏ trong phiên.
         if (userDetails.getRole().equals("STAFF") || userDetails.getRole().equals("ADMIN")) {
             session.removeAttribute(SessionKeys.CART);
-        } else if (cart != null) {
-            session.setAttribute(SessionKeys.CART, cart);
         }
 
         // Save SecurityContext
