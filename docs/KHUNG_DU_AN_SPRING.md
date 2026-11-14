@@ -204,10 +204,13 @@ spring:
       genai:
         api-key: ${GEMINI_API_KEY:}
         chat:
-          options: { model: gemini-2.5-flash, temperature: 0.2 }
+          model: gemini-3.5-flash-lite
+          temperature: 0.2
         embedding:
+          api-key: ${GEMINI_API_KEY:}
           text:
-            options: { model: gemini-embedding-001, dimensions: 768 }
+            model: gemini-embedding-001
+            dimensions: 768
     vectorstore:
       mariadb:
         initialize-schema: false
