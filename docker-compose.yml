@@ -1,0 +1,23 @@
+services:
+  database:
+    image: mariadb:11.4
+    container_name: keymech-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root-secret-password
+      MYSQL_DATABASE: keymech
+      MYSQL_USER: shop
+      MYSQL_PASSWORD: change-me
+    ports:
+      - "3308:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--mariadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
