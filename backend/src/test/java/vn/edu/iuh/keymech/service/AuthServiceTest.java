@@ -26,19 +26,16 @@ import vn.edu.iuh.keymech.dto.ForgotPasswordRequest;
 import vn.edu.iuh.keymech.dto.LoginRequest;
 import vn.edu.iuh.keymech.dto.RegisterRequest;
 import vn.edu.iuh.keymech.dto.ResetPasswordRequest;
-import vn.edu.iuh.keymech.dto.UpdateProfileRequest;
 import vn.edu.iuh.keymech.dto.UserResponse;
 import vn.edu.iuh.keymech.exception.BusinessException;
 import vn.edu.iuh.keymech.exception.InvalidCodeException;
 import vn.edu.iuh.keymech.exception.InvalidCredentialsException;
 import vn.edu.iuh.keymech.exception.InvalidPasswordException;
 import vn.edu.iuh.keymech.exception.NotAuthenticatedException;
-import vn.edu.iuh.keymech.exception.ResourceNotFoundException;
 import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.security.AppUserDetails;
-import vn.edu.iuh.keymech.util.SessionKeys;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -132,8 +129,6 @@ class AuthServiceTest {
 
             when(userRepository.findByEmail("customer@example.com")).thenReturn(Optional.of(user));
             when(authenticationManager.authenticate(any())).thenReturn(auth);
-
-            String idBefore = session.getId();
 
             UserResponse response = authService.login(loginRequest, request);
 

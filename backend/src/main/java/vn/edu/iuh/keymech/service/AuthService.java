@@ -2,7 +2,6 @@ package vn.edu.iuh.keymech.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -10,7 +9,6 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +35,6 @@ import vn.edu.iuh.keymech.util.SessionKeys;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -155,8 +152,6 @@ public class AuthService {
         User user = userRepository.findByEmail(email).orElse(null);
 
         // Always return same message to prevent email enumeration
-        String message = "Nếu email tồn tại và tài khoản đang hoạt động, mã xác thực đã được gửi";
-
         if (user != null && user.isEnabled()) {
             // Rate limiting: max 5 requests per hour per email
             long now = System.currentTimeMillis();

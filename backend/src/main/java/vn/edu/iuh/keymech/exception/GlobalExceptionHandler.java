@@ -9,10 +9,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import vn.edu.iuh.keymech.exception.InvalidCodeException;
-import vn.edu.iuh.keymech.exception.InvalidCredentialsException;
-import vn.edu.iuh.keymech.exception.InvalidPasswordException;
-import vn.edu.iuh.keymech.exception.NotAuthenticatedException;
 
 @Slf4j
 @RestControllerAdvice
