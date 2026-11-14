@@ -5,9 +5,15 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
+<<<<<<< HEAD
     url: ${DB_URL:jdbc:mariadb://localhost:3308/keymech}
     username: ${DB_USERNAME:shop}
     password: ${DB_PASSWORD:change-me}
+=======
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+>>>>>>> origin/main
 
   jpa:
     open-in-view: false
@@ -33,12 +39,24 @@ spring:
   ai:
     google:
       genai:
+<<<<<<< HEAD
         api-key: ${GEMINI_API_KEY:dev-dummy-key}
         chat:
           options: { model: gemini-2.5-flash, temperature: 0.2 }
         embedding:
           text:
             options: { model: gemini-embedding-001, dimensions: 768 }
+=======
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          model: gemini-3.5-flash-lite
+          temperature: 0.2
+        embedding:
+          api-key: ${GEMINI_API_KEY:}
+          text:
+            model: gemini-embedding-001
+            dimensions: 768
+>>>>>>> origin/main
     vectorstore:
       mariadb:
         initialize-schema: false

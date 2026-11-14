@@ -1,5 +1,6 @@
 package vn.edu.iuh.keymech.repository;
 
+<<<<<<< HEAD
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -10,10 +11,16 @@ import org.springframework.data.repository.query.Param;
 import vn.edu.iuh.keymech.dto.ActivitySignal;
 import vn.edu.iuh.keymech.model.UserActivity;
 import vn.edu.iuh.keymech.model.enums.EventType;
+=======
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.edu.iuh.keymech.model.UserActivity;
+>>>>>>> origin/main
 
 public interface UserActivityRepository extends JpaRepository<UserActivity, Long> {
     List<UserActivity> findByVisitorIdOrderByCreatedAtDesc(String visitorId);
     List<UserActivity> findByUserIdOrderByCreatedAtDesc(Long userId);
+<<<<<<< HEAD
 
     /** Dùng để bỏ qua VIEW_PRODUCT lặp lại trong 60 giây của cùng một phiên. */
     boolean existsByVisitorIdAndEventTypeAndProductIdAndCreatedAtAfter(
@@ -56,4 +63,6 @@ public interface UserActivityRepository extends JpaRepository<UserActivity, Long
     List<ActivitySignal> findSignalsByVisitor(@Param("visitorId") String visitorId,
                                               @Param("since") LocalDateTime since,
                                               Pageable pageable);
+=======
+>>>>>>> origin/main
 }

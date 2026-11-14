@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Mã xác thực đặt lại mật khẩu</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px;">
+        <h1 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">Mã xác thực đặt lại mật khẩu</h1>
+
+        <p>Bạn (hoặc ai đó) đã yêu cầu đặt lại mật khẩu cho tài khoản KeyMech của bạn.</p>
+
+        <div style="background-color: white; border: 2px solid #3498db; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #666;">Mã xác thực của bạn:</p>
+            <h2 style="margin: 10px 0; color: #2c3e50; letter-spacing: 4px; font-size: 32px;" th:text="${code}">123456</h2>
+            <p style="margin: 0; font-size: 12px; color: #888;">Mã có hiệu lực trong <strong th:text="${expiryMinutes}">10</strong> phút</p>
+        </div>
+
+        <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này. Tài khoản của bạn vẫn an toàn.</p>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+
+        <p style="font-size: 12px; color: #888; text-align: center;">Đây là email tự động, vui lòng không trả lời.</p>
+    </div>
+</body>
+</html>

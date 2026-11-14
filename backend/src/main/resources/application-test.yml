@@ -6,3 +6,8 @@ spring:
     google:
       genai:
         api-key: test-key
+<<<<<<< HEAD
+=======
+        embedding:
+          api-key: test-key
+>>>>>>> origin/main

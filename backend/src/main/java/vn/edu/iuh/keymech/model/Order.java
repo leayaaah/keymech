@@ -13,7 +13,13 @@ import vn.edu.iuh.keymech.model.enums.PaymentMethod;
 import vn.edu.iuh.keymech.model.enums.PaymentStatus;
 
 @Entity
+<<<<<<< HEAD
 @Table(name = "orders")
+=======
+@Table(name = "orders", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_orders_order_code", columnNames = "order_code")
+})
+>>>>>>> origin/main
 @Getter
 @Setter
 @NoArgsConstructor
@@ -48,7 +54,11 @@ public class Order {
     private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
 
     @Enumerated(EnumType.STRING)
+<<<<<<< HEAD
     @Column(nullable = false, length = 15)
+=======
+    @Column(name = "status", nullable = false, length = 15)
+>>>>>>> origin/main
     private OrderStatus status = OrderStatus.NEW;
 
     @Column(name = "total_amount", nullable = false, precision = 14, scale = 0)
