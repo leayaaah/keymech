@@ -32,8 +32,11 @@ import vn.edu.iuh.keymech.security.AppUserDetails;
 import vn.edu.iuh.keymech.util.CodeGenerator;
 import vn.edu.iuh.keymech.util.SessionKeys;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -169,7 +172,7 @@ public class AuthService {
 
             // Generate 6-digit code
             String code = codeGenerator.resetCode();
-            String codeHash = hashCode(code);
+            String codeHash = hashResetCode(code);
 
             // Store in session
             HttpSession session = httpRequest.getSession(true);
@@ -214,7 +217,9 @@ public class AuthService {
             throw new InvalidCodeException("INVALID_CODE", "Nhập sai quá nhiều lần, vui lòng yêu cầu mã mới");
         }
 
-        if (!hashCode(code).equals(storedHash)) {
+        byte[] codeHash = hashResetCode(code).getBytes(StandardCharsets.UTF_8);
+        byte[] storedHashBytes = storedHash.getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(codeHash, storedHashBytes)) {
             attempts = (attempts == null ? 1 : attempts + 1);
             session.setAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts", attempts);
             throw new InvalidCodeException("INVALID_CODE", "Mã xác thực không đúng");
@@ -271,9 +276,13 @@ public class AuthService {
         session.removeAttribute(SessionKeys.RESET_CODE + "_" + email + "_attempts");
     }
 
-    private String hashCode(String code) {
-        // Simple hash for session storage - in production use proper password hashing
-        return Base64.getEncoder().encodeToString(code.getBytes());
+    private String hashResetCode(String code) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(code.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 
     private UserResponse toResponse(User user) {

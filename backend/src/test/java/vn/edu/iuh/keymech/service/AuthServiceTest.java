@@ -367,7 +367,7 @@ class AuthServiceTest {
             MockHttpServletRequest request = new MockHttpServletRequest();
             MockHttpSession session = new MockHttpSession();
             request.setSession(session);
-            session.setAttribute("resetCode_test@example.com", "MTIzNDU2");
+            session.setAttribute("resetCode_test@example.com", "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92");
             session.setAttribute("resetCode_test@example.com_expires", LocalDateTime.now().plusMinutes(5));
             session.setAttribute("resetCode_test@example.com_attempts", 0);
 
