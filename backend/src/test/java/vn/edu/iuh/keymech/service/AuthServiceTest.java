@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,7 +38,6 @@ import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.security.AppUserDetails;
-import vn.edu.iuh.keymech.util.CodeGenerator;
 import vn.edu.iuh.keymech.util.SessionKeys;
 
 import java.time.LocalDateTime;
@@ -60,7 +60,6 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock SecurityContextRepository securityContextRepository;
     @Mock EmailService emailService;
-    @Mock CodeGenerator codeGenerator;
 
     @InjectMocks AuthService authService;
 
@@ -315,13 +314,14 @@ class AuthServiceTest {
             user.setEnabled(true);
 
             when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
-            when(codeGenerator.resetCode()).thenReturn("123456");
 
             authService.forgotPassword(forgotRequest, request);
 
             HttpSession session = request.getSession(false);
             assertThat(session).isNotNull();
-            verify(emailService).sendResetPasswordEmail("test@example.com", "123456");
+            ArgumentCaptor<String> codeCaptor = ArgumentCaptor.forClass(String.class);
+            verify(emailService, times(1)).sendResetPasswordEmail(eq("test@example.com"), codeCaptor.capture());
+            assertThat(codeCaptor.getValue()).matches("\\d{6}");
         }
     }
 
