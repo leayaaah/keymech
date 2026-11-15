@@ -1,13 +1,9 @@
 package vn.edu.iuh.keymech.util;
 
 import java.security.SecureRandom;
-<<<<<<< HEAD
-
-=======
 import org.springframework.stereotype.Component;
 
 @Component
->>>>>>> origin/main
 public final class CodeGenerator {
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -21,16 +17,6 @@ public final class CodeGenerator {
     }
 
     /**
-<<<<<<< HEAD
-     * Tạo mã yêu cầu Custom dạng CUS-XXXXXXXXXX (10 ký tự chữ hoa + số).
-     */
-    public static String customCode() {
-        return "CUS-" + alphanumeric(10);
-    }
-
-    /**
-=======
->>>>>>> origin/main
      * Tạo mã xác nhận quên mật khẩu (6 chữ số).
      */
     public static String resetCode() {
