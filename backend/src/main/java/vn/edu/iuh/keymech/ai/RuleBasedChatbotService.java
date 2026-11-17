@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,7 +24,9 @@ import vn.edu.iuh.keymech.repository.ChatProductRepository;
 public class RuleBasedChatbotService implements ChatbotService {
 
     private static final Pattern LAYOUT = Pattern.compile("(?<!\\w)(full[- ]?size|100%|tkl|75%|65%|60%|40%)(?!\\w)");
-    private static final Pattern BUDGET = Pattern.compile("(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|k|nghin)(?!\\w)");
+    private static final Pattern BUDGET = Pattern.compile(
+        "(?<![\\w.,])(?:(\\d+(?:[.,]\\d+)?)\\s*(trieu|tr|nghin|k)|(\\d{1,3}(?:[.,]\\d{3})+|\\d{4,})"
+            + "(?:\\s*(?:vnd|dong|d))?)(?![\\w%]|[.,]\\d)");
     private static final List<String> TERMS = List.of(
         "keychron", "gateron", "filco", "ducky", "akko", "linear", "tactile",
         "clicky", "keycap", "switch", "kit");
@@ -84,7 +87,7 @@ public class RuleBasedChatbotService implements ChatbotService {
     }
 
     private static String normalize(String value) {
-        return Normalizer.normalize(value == null ? "" : value.toLowerCase(), Normalizer.Form.NFD)
+        return Normalizer.normalize(value == null ? "" : value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
             .replaceAll("\\p{M}", "").replace('đ', 'd');
     }
 
@@ -99,7 +102,7 @@ public class RuleBasedChatbotService implements ChatbotService {
         Matcher match = LAYOUT.matcher(text);
         if (!match.find()) return null;
         return switch (match.group(1)) {
-            case "100%", "full-size", "full size" -> "Full-size";
+            case "100%", "fullsize", "full-size", "full size" -> "Fullsize";
             case "tkl" -> "TKL";
             default -> match.group(1);
         };
@@ -108,8 +111,12 @@ public class RuleBasedChatbotService implements ChatbotService {
     private static BigDecimal budget(String text) {
         Matcher match = BUDGET.matcher(text);
         if (!match.find()) return null;
+        String unit = match.group(2);
+        if (unit == null) {
+            return new BigDecimal(match.group(3).replace(".", "").replace(",", ""));
+        }
         BigDecimal value = new BigDecimal(match.group(1).replace(',', '.'));
-        return value.multiply(match.group(2).equals("trieu") || match.group(2).equals("tr")
+        return value.multiply(unit.equals("trieu") || unit.equals("tr")
             ? BigDecimal.valueOf(1_000_000) : BigDecimal.valueOf(1_000));
     }
 }

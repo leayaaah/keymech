@@ -12,6 +12,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import tools.jackson.databind.ObjectMapper;
@@ -49,5 +52,20 @@ class RuleBasedChatbotServiceTest {
         var response = chatbot.reply("Hôm nay có mưa không?");
         assertTrue(response.answer().contains("chỉ tư vấn bàn phím"));
         verify(products, never()).recommend(any(), any(), any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "Fullsize dưới 2000000", "Full-size dưới 2.000.000đ", "Full size dưới 2,000,000 VND",
+        "Phím 100% dưới 2tr"
+    })
+    void reply_fullsizeAliasesAndBudget_useCatalogLayout(String question) {
+        when(products.recommend(eq("Fullsize"), eq(BigDecimal.valueOf(2_000_000)),
+            eq(null), any(Pageable.class))).thenReturn(Page.empty());
+
+        chatbot.reply(question);
+
+        verify(products).recommend(eq("Fullsize"), eq(BigDecimal.valueOf(2_000_000)),
+            eq(null), any(Pageable.class));
     }
 }

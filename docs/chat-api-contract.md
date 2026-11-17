@@ -22,6 +22,8 @@ Body JSON:
 
 Chỉ trả sản phẩm và danh mục đang `ACTIVE`. Giá, tồn kho và liên kết lấy từ CSDL. Câu ngoài phạm vi trả lời xin lỗi, `products` rỗng. Sai body trả `400 VALIDATION_ERROR`; quá 10 câu trong một phút mỗi Session hoặc 200 câu mỗi giờ toàn ứng dụng trả `429 RATE_LIMITED`.
 
+Ngân sách có thể nhập dưới dạng `2 triệu`, `2tr`, `2000000` hoặc `2.000.000đ`. Các cách gọi `Fullsize`, `Full-size`, `Full size` và `100%` đều lọc theo layout Fullsize.
+
 ## GET /api/chat/history
 
 Trả `200` với mảng tin nhắn trong Session, ví dụ:

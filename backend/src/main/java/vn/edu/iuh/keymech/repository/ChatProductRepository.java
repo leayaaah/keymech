@@ -17,6 +17,7 @@ public interface ChatProductRepository extends Repository<Product, Long> {
            "AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
            "AND (:term IS NULL OR lower(p.name) LIKE lower(concat('%', :term, '%')) " +
            "OR lower(p.brand) LIKE lower(concat('%', :term, '%')) " +
+           "OR lower(p.switchType) LIKE lower(concat('%', :term, '%')) " +
            "OR lower(p.description) LIKE lower(concat('%', :term, '%')) " +
            "OR lower(p.specs) LIKE lower(concat('%', :term, '%')))")
     Page<Product> recommend(@Param("layout") String layout,
