@@ -2,6 +2,7 @@ package vn.edu.iuh.keymech.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import java.net.URI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,12 +21,16 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
 
-    @Value("${spring.mail.username:}")
-    private String fromEmail;
+    private final String fromEmail;
+    private final URI storefront;
 
-    public EmailService(JavaMailSender mailSender, TemplateEngine templateEngine) {
+    public EmailService(JavaMailSender mailSender, TemplateEngine templateEngine,
+                        @Value("${spring.mail.username:}") String mailUsername,
+                        @Value("${app.cors-origin}") URI storefront) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
+        this.fromEmail = mailUsername.isBlank() ? "noreply@keymech.local" : mailUsername;
+        this.storefront = storefront;
     }
 
     @Async
@@ -33,9 +38,9 @@ public class EmailService {
         try {
             Context context = new Context();
             context.setVariable("fullName", fullName);
-            context.setVariable("loginUrl", "/login");
-            context.setVariable("shopUrl", "/");
-            context.setVariable("customUrl", "/custom");
+            context.setVariable("email", toEmail);
+            context.setVariable("shopUrl", storefront.resolve("/").toString());
+            context.setVariable("customUrl", storefront.resolve("/customer/custom-requests").toString());
 
             String html = templateEngine.process("mail/welcome", context);
             sendHtmlEmail(toEmail, "Chào mừng bạn đến với cửa hàng bàn phím cơ", html);

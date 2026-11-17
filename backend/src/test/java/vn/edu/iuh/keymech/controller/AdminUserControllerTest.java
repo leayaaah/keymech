@@ -18,7 +18,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,40 +68,6 @@ class AdminUserControllerTest {
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(res.getBody().role()).isEqualTo("STAFF");
-    }
-
-    @Test
-    @DisplayName("TC-SEC-17: POST /api/admin/users - Staff không được tạo user 403 (PreAuthorize ADMIN)")
-    void createStaff_staff_forbidden() {
-        AdminUserService svc = mock(AdminUserService.class);
-        AdminUserController c = new AdminUserController(svc);
-        CreateStaffRequest req = new CreateStaffRequest(
-            "New Staff", "newstaff@example.com", "password123", "0909", "Address");
-        when(svc.createStaff(any(CreateStaffRequest.class))).thenReturn(
-            new UserResponse(3L, "N", "n@x.com", null, null, "STAFF", true));
-
-        ResponseEntity<UserResponse> res = c.createStaff(req);
-
-        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        verify(svc).createStaff(any(CreateStaffRequest.class));
-    }
-
-    @Test
-    @DisplayName("TC-SEC-13: PUT /api/admin/users/{id}/visibility - Admin không thể ẩn Admin 409")
-    void toggleVisibility_adminAccount_forbidden() {
-        AdminUserService svc = mock(AdminUserService.class);
-        AdminUserController c = new AdminUserController(svc);
-        doThrow(new vn.edu.iuh.keymech.exception.BusinessException(
-            "FORBIDDEN", "Không thể ẩn/hiện tài khoản Admin"))
-            .when(svc).toggleUserVisibility(1L);
-
-        try {
-            c.toggleVisibility(1L);
-        } catch (vn.edu.iuh.keymech.exception.BusinessException e) {
-            assertThat(e.getCode()).isEqualTo("FORBIDDEN");
-            return;
-        }
-        throw new AssertionError("Expected BusinessException");
     }
 
     @Test

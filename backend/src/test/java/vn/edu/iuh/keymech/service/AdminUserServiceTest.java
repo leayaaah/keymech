@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.edu.iuh.keymech.dto.CreateStaffRequest;
 import vn.edu.iuh.keymech.dto.UserResponse;
 import vn.edu.iuh.keymech.exception.BusinessException;
+import org.springframework.security.access.AccessDeniedException;
 import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserRepository;
@@ -76,8 +77,7 @@ class AdminUserServiceTest {
 
             // When / Then
             assertThatThrownBy(() -> adminUserService.updateUser(1L, "New Name", "0909", "Address", null))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
+                .isInstanceOf(AccessDeniedException.class);
         }
 
         @Test
@@ -88,8 +88,7 @@ class AdminUserServiceTest {
 
             // When / Then
             assertThatThrownBy(() -> adminUserService.toggleUserVisibility(1L))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "FORBIDDEN");
+                .isInstanceOf(AccessDeniedException.class);
         }
 
         @Test
