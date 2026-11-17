@@ -9,6 +9,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.iuh.keymech.dto.CheckoutRequest;
 import vn.edu.iuh.keymech.dto.CheckoutResponse;
@@ -20,7 +21,6 @@ import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.OrderRepository;
 import vn.edu.iuh.keymech.repository.OrderStockRepository;
-import vn.edu.iuh.keymech.repository.ProductRepository;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.util.CodeGenerator;
 
@@ -28,20 +28,21 @@ import vn.edu.iuh.keymech.util.CodeGenerator;
 public class OrderService {
 
     private final UserRepository userRepository;
-    private final ProductRepository productRepository;
     private final OrderStockRepository stockRepository;
     private final OrderRepository orderRepository;
 
-    public OrderService(UserRepository userRepository, ProductRepository productRepository,
-                        OrderStockRepository stockRepository, OrderRepository orderRepository) {
+    public OrderService(UserRepository userRepository, OrderStockRepository stockRepository,
+                        OrderRepository orderRepository) {
         this.userRepository = userRepository;
-        this.productRepository = productRepository;
         this.stockRepository = stockRepository;
         this.orderRepository = orderRepository;
     }
 
-    /** Transaction commit hoàn tất trước khi Controller xóa giỏ hoặc gửi email. */
-    @Transactional
+    /**
+     * Đọc tồn đã commit sau khi lấy khóa dòng, kể cả khi giao dịch khác vừa mua cùng sản phẩm.
+     * Controller chỉ xóa giỏ và gửi email sau khi giao dịch này commit.
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public PlacedOrder placeOrder(Long userId, CheckoutRequest request, Map<Long, Integer> cart) {
         if (cart == null || cart.isEmpty()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "EMPTY_CART", "Giỏ hàng đang trống");
@@ -69,7 +70,7 @@ public class OrderService {
             if (productId == null || quantity == null || quantity < 1) {
                 throw outOfStock();
             }
-            Product product = productRepository.findById(productId).orElseThrow(this::outOfStock);
+            Product product = stockRepository.findForCheckout(productId).orElseThrow(this::outOfStock);
             if (stockRepository.decreaseStock(productId, quantity) != 1) {
                 throw outOfStock();
             }

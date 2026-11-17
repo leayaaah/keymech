@@ -1,9 +1,11 @@
 package vn.edu.iuh.keymech.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,8 +48,24 @@ class OrderControllerTest {
         var response = controller.checkout(body, customer(), request);
 
         assertEquals(201, response.getStatusCode().value());
-        assertEquals(null, request.getSession().getAttribute(SessionKeys.CART));
+        assertNull(request.getSession().getAttribute(SessionKeys.CART));
         verify(email).sendConfirmation(result);
+    }
+
+    @Test
+    @DisplayName("TC-PAY-08: lỗi lên lịch email vẫn trả 201 và đặt lại trong cùng phiên trả EMPTY_CART")
+    void checkout_emailSchedulingFailure_doesNotReopenCart() {
+        MockHttpServletRequest request = requestWithCart();
+        OrderService.PlacedOrder result = placedOrder();
+        when(orders.placeOrder(eq(7L), eq(body), any())).thenReturn(result);
+        doThrow(new IllegalStateException()).when(email).sendConfirmation(result);
+
+        assertEquals(201, controller.checkout(body, customer(), request).getStatusCode().value());
+        assertNull(request.getSession().getAttribute(SessionKeys.CART));
+        BusinessException error = assertThrows(BusinessException.class,
+            () -> controller.checkout(body, customer(), request));
+        assertEquals("EMPTY_CART", error.getCode());
+        verify(orders).placeOrder(eq(7L), eq(body), any());
     }
 
     @Test

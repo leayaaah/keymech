@@ -60,7 +60,8 @@ public class OrderController {
             try {
                 orderEmailService.sendConfirmation(placed);
             } catch (RuntimeException e) {
-                log.warn("Không thể lên lịch email xác nhận đơn {}", placed.response().orderCode(), e);
+                log.warn("Không thể lên lịch email xác nhận đơn {} ({})",
+                    placed.response().orderCode(), e.getClass().getSimpleName());
             }
             return ResponseEntity.status(HttpStatus.CREATED).body(placed.response());
         }

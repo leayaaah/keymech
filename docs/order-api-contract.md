@@ -53,7 +53,7 @@ Các mã lỗi này là hợp đồng cho phần nghiệp vụ; chỉ các mã c
 }
 ```
 
-Thành công: `201 Created`. Đơn khởi tạo `NEW`, `UNPAID`; giỏ chỉ xóa sau khi transaction tạo đơn và trừ tồn đã commit.
+Thành công: `201 Created`. Đơn khởi tạo `NEW`, `UNPAID`. Giá được đọc dưới khóa dòng sản phẩm trước khi trừ tồn. Giỏ chỉ xóa sau khi transaction đã commit. Checkout thứ hai trên cùng phiên sau khi giỏ được xóa trả `400 EMPTY_CART`.
 
 ```json
 {

@@ -39,7 +39,8 @@ public class OrderEmailService {
             helper.setText(html, true);
             mailSender.send(message);
         } catch (Exception e) {
-            log.warn("Không thể gửi email xác nhận đơn {}", order.response().orderCode(), e);
+            log.warn("Không thể gửi email xác nhận đơn {} ({})",
+                order.response().orderCode(), e.getClass().getSimpleName());
         }
     }
 }

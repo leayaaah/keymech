@@ -26,14 +26,12 @@ import vn.edu.iuh.keymech.model.enums.PaymentMethod;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.OrderRepository;
 import vn.edu.iuh.keymech.repository.OrderStockRepository;
-import vn.edu.iuh.keymech.repository.ProductRepository;
 import vn.edu.iuh.keymech.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
     @Mock UserRepository users;
-    @Mock ProductRepository products;
     @Mock OrderStockRepository stock;
     @Mock OrderRepository orders;
     @InjectMocks OrderService service;
@@ -56,7 +54,7 @@ class OrderServiceTest {
     void placeOrder_validCart_usesDatabasePriceAndConditionalUpdate() {
         givenCustomer();
         Product product = product(3L, "Keychron K2", 2_200_000);
-        when(products.findById(3L)).thenReturn(Optional.of(product));
+        when(stock.findForCheckout(3L)).thenReturn(Optional.of(product));
         when(stock.decreaseStock(3L, 2)).thenReturn(1);
         when(orders.save(any(Order.class))).thenAnswer(invocation -> {
             Order saved = invocation.getArgument(0);
@@ -77,7 +75,7 @@ class OrderServiceTest {
     @DisplayName("TC-PAY-03: thiếu tồn trả 409 và không lưu đơn")
     void placeOrder_outOfStock_doesNotSaveOrder() {
         givenCustomer();
-        when(products.findById(3L)).thenReturn(Optional.of(product(3L, "Keychron K2", 2_200_000)));
+        when(stock.findForCheckout(3L)).thenReturn(Optional.of(product(3L, "Keychron K2", 2_200_000)));
         when(stock.decreaseStock(3L, 2)).thenReturn(0);
 
         BusinessException error = assertThrows(BusinessException.class,
