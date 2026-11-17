@@ -2,6 +2,8 @@
 
 Hướng dẫn này áp dụng cho repo KeyMech. Tài liệu chi tiết nằm trong docs/; chỉ đọc các mục liên quan đến nhiệm vụ. Kiểm tra nhánh, working tree và code hiện tại trước khi kết luận hoặc sửa.
 
+Trên nhánh `feature/C-02-checkout-G-04-rule`, xem [bàn giao Sprint 2 của Thùy](docs/sprint-2-thuy-handoff.md) trước khi sửa checkout, email đơn hàng hoặc chatbot rule.
+
 ## Quy trình cho một nhiệm vụ
 
 1. Xác định chức năng và phạm vi từ yêu cầu, kế hoạch và code. Hỏi khi thiếu thông tin làm thay đổi quyết định quan trọng; không dừng chỉ vì người dùng không nêu mã chức năng.
