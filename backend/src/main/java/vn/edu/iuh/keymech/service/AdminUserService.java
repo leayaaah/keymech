@@ -2,6 +2,7 @@ package vn.edu.iuh.keymech.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -66,7 +67,7 @@ public class AdminUserService {
 
         // Không thể chỉnh sửa tài khoản quản trị
         if (target.getRole() == Role.ADMIN) {
-            throw new BusinessException("FORBIDDEN", "Không thể sửa tài khoản Admin");
+            throw new AccessDeniedException("Không thể sửa tài khoản Admin");
         }
 
         // Kiểm tra người dùng có đang tự sửa vai trò hay không
@@ -85,7 +86,7 @@ public class AdminUserService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         if (target.getRole() == Role.ADMIN) {
-            throw new BusinessException("FORBIDDEN", "Không thể ẩn/hiện tài khoản Admin");
+            throw new AccessDeniedException("Không thể ẩn/hiện tài khoản Admin");
         }
 
         target.setEnabled(!target.isEnabled());
