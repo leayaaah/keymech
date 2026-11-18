@@ -2,7 +2,15 @@
 
 Cập nhật ngày 18/11/2026. Phạm vi là C-02 checkout, email xác nhận đơn và G-04 chatbot rule theo [phân công hạn 30/11](Phan_cong_Nhom4_deadline_30-11.md#sprint-2-1611-đến-2211).
 
-## Bắt đầu từ worktree này
+## Tích hợp với giỏ của Thuận
+
+Nhánh checkout đã gộp `main` tại `9b2f233` và nhánh catalog/giỏ tại `e1f3702`. Khi xử lý xung đột `GlobalExceptionHandler`, giữ một handler JSON sai, handler tham số sai của Trí và mã HTTP do `BusinessException` cung cấp. Các API giỏ dùng cùng khóa Session với checkout và kiểm tra DTO trước khi cập nhật số lượng.
+
+Checkout chỉ phụ thuộc giỏ Session. Catalog và giỏ vẫn gọi tracker bất đồng bộ của nhánh Thuận. Hợp đồng tracker chính thức, liên kết Guest với Customer và ghi `PURCHASE` sau commit tiếp tục ở phần tracking.
+
+Kiểm thử lại trên bản tích hợp với MariaDB 11.8 và MailHog tách riêng đã đạt 76/76 test Maven. Frontend lint và build đạt. Chrome kiểm tra trang sản phẩm, thêm/sửa giỏ, giữ giỏ qua đăng nhập, cộng dồn cùng phiên và giỏ trống sau khi gọi API checkout. HTTP xác nhận TC-PAY-07/08, rollback giỏ nhiều món và email theo từng đơn đã commit. Postman xác nhận số lượng 0 trả `400 VALIDATION_ERROR`.
+
+## Mốc kiểm thử ban đầu
 
 | Ref | Mốc kiểm thử |
 | --- | --- |
@@ -35,7 +43,7 @@ Khi chạy lại, dùng MariaDB và MailHog tách riêng với dữ liệu mẫu
 
 ## Việc tiếp theo và điểm phối hợp
 
-1. **Thuận và Thùy** tích hợp giỏ và checkout trên nhánh chung, chạy lại TC-PAY-07/08 với cùng cookie phiên và kiểm tra MailHog. Bản tích hợp tạm chưa thay đổi lịch sử Git của các nhánh.
+1. **Thuận và Thùy** cùng review thay đổi khóa Session và validation của API giỏ. Dùng cùng cookie phiên khi nghiệm thu từ thêm giỏ đến checkout. UI thanh toán thuộc Sprint 3.
 2. **Phương và Thuận** thống nhất hợp đồng `ActivityTracker` và nguồn `visitor_id`. Trên bản thử, một lần `ADD_TO_CART` của Customer lỗi vì `visitor_id` null, dù giỏ và checkout vẫn hoạt động. Phần Custom/tracking ở `b142f92` đã bị revert trên `main`; khi đối chiếu với nhánh catalog, hai bản khai báo `ActivityTracker` và `PageResponse` xung đột.
 3. **Thùy và Phương** nối `PURCHASE` cho từng mặt hàng sau commit khi chữ ký tracker ổn định. Xác nhận checkout rollback không ghi sự kiện và lỗi tracking không đổi kết quả đặt hàng.
 4. **Sprint 3** tiếp tục UI checkout, trang đặt hàng thành công và đơn của tôi, API Staff A-04 đến A-06, cùng `ChatWidget` do Phương phụ trách. Chatbot RAG còn phụ thuộc mốc hoàn tất checkout theo bản phân công.
