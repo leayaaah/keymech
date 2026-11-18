@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Xác nhận đơn hàng</title></head>
+<body>
+  <h1 th:text="'Đơn hàng ' + ${order.response.orderCode}">Đơn hàng</h1>
+  <p th:text="'Người nhận: ' + ${order.receiverName}"></p>
+  <p th:text="'Điện thoại: ' + ${order.receiverPhone}"></p>
+  <p th:text="'Địa chỉ: ' + ${order.shippingAddress}"></p>
+  <p th:text="'Phương thức thanh toán: ' + ${order.paymentMethod}"></p>
+  <table>
+    <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+    <tbody>
+      <tr th:each="item : ${order.items}">
+        <td th:text="${item.productName}"></td>
+        <td th:text="${item.quantity}"></td>
+        <td th:text="${item.unitPrice}"></td>
+        <td th:text="${item.lineTotal}"></td>
+      </tr>
+    </tbody>
+  </table>
+  <p th:text="'Tổng tiền: ' + ${order.response.totalAmount} + ' VND'"></p>
+</body>
+</html>
