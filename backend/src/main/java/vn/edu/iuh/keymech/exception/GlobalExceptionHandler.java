@@ -4,11 +4,13 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
@@ -19,6 +21,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(s).body(ErrorResponse.of(s.value(), error, msg));
     }
 
+    @ExceptionHandler(NotAuthenticatedException.class)
+    public ResponseEntity<ErrorResponse> notAuthenticated(NotAuthenticatedException e) {
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> invalidCredentials(InvalidCredentialsException e) {
+        return build(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng");
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ErrorResponse> invalidPassword(InvalidPasswordException e) {
+        return build(HttpStatus.BAD_REQUEST, e.getCode(), e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCodeException.class)
+    public ResponseEntity<ErrorResponse> invalidCode(InvalidCodeException e) {
+        return build(HttpStatus.BAD_REQUEST, e.getCode(), e.getMessage());
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> business(BusinessException e) {
         return build(e.getStatus(), e.getCode(), e.getMessage());
@@ -27,6 +49,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> malformedBody(HttpMessageNotReadableException e) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Dữ liệu yêu cầu không hợp lệ");
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    public ResponseEntity<ErrorResponse> invalidParameter(Exception e) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Tham số yêu cầu không hợp lệ");
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)

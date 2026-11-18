@@ -1,7 +1,9 @@
 package vn.edu.iuh.keymech.util;
 
 import java.security.SecureRandom;
+import org.springframework.stereotype.Component;
 
+@Component
 public final class CodeGenerator {
     private static final SecureRandom RANDOM = new SecureRandom();
 
