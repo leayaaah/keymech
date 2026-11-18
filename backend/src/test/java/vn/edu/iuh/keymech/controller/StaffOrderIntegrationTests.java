@@ -149,6 +149,22 @@ class StaffOrderIntegrationTests {
     }
 
     @Test
+    void insufficientStockTakesPrecedenceOverOrderTotalLimit() throws Exception {
+        Order order = order("LIMIT", "2026-11-18T10:30:00", OrderStatus.NEW);
+        OrderItem item = order.getItems().getFirst();
+        item.setUnitPrice(BigDecimal.valueOf(2_200_000));
+        order.setTotalAmount(BigDecimal.valueOf(4_400_000));
+        entityManager.flush();
+
+        mvc.perform(update(order.getId(), item.getId(), 50_000_000))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("OUT_OF_STOCK"));
+        assertThat(reloadProduct(product.getId()).getStockQuantity()).isEqualTo(5);
+        Order persisted = entityManager.find(Order.class, order.getId());
+        assertThat(persisted.getItems().getFirst().getQuantity()).isEqualTo(2);
+        assertThat(persisted.getTotalAmount()).isEqualByComparingTo("4400000");
+    }
+
+    @Test
     void unrelatedLineAndFinalStatusCannotChangeStock() throws Exception {
         Order editable = order("EDIT", "2026-11-18T10:30:00", OrderStatus.CONFIRMED);
         Order completed = order("DONE", "2026-11-18T10:30:00", OrderStatus.COMPLETED);

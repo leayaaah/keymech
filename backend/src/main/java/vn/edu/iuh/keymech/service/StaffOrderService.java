@@ -78,15 +78,17 @@ public class StaffOrderService {
         }
 
         int delta = quantity - line.getQuantity();
+        Long productId = line.getProduct().getId();
+        // Kiểm tra tồn bằng UPDATE có điều kiện trước. Nếu tổng tiền sai, transaction hoàn lại phần đã trừ.
+        if (delta > 0 && stock.decreaseStock(productId, delta) != 1) {
+            throw new BusinessException("OUT_OF_STOCK", "Sản phẩm không còn đủ hàng");
+        }
+
         BigDecimal total = order.getItems().stream()
             .map(item -> lineTotal(item, item == line ? quantity : item.getQuantity()))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (total.compareTo(MAX_ORDER_TOTAL) > 0) {
             throw invalid("Số lượng làm tổng tiền đơn hàng vượt giới hạn");
-        }
-        Long productId = line.getProduct().getId();
-        if (delta > 0 && stock.decreaseStock(productId, delta) != 1) {
-            throw new BusinessException("OUT_OF_STOCK", "Sản phẩm không còn đủ hàng");
         }
         if (delta < 0 && stock.increaseStock(productId, -delta) != 1) {
             throw new BusinessException("OUT_OF_STOCK", "Không thể hoàn tồn cho sản phẩm");
