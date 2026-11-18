@@ -23,4 +23,10 @@ public interface OrderStockRepository extends Repository<Product, Long> {
            "WHERE p.id = :id AND :qty > 0 AND p.stockQuantity >= :qty " +
            "AND p.status = vn.edu.iuh.keymech.model.enums.VisibilityStatus.ACTIVE")
     int decreaseStock(@Param("id") Long id, @Param("qty") int qty);
+
+    /** Hoàn tồn với cả sản phẩm đã ẩn. */
+    @Modifying
+    @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity + :qty " +
+           "WHERE p.id = :id AND :qty > 0 AND p.stockQuantity <= 2147483647 - :qty")
+    int increaseStock(@Param("id") Long id, @Param("qty") int qty);
 }
