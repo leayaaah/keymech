@@ -18,6 +18,10 @@ public interface OrderRepository extends Repository<Order, Long> {
     <S extends Order> S save(S order);
     Optional<Order> findById(Long id);
     Page<Order> findByUserId(Long userId, Pageable pageable);
+    long countByUserId(Long userId);
+    boolean existsById(Long id);
+
+    @EntityGraph(attributePaths = "items.product")
     Optional<Order> findByIdAndUserId(Long id, Long userId);
     Optional<Order> findByOrderCode(String orderCode);
 

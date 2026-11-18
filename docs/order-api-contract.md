@@ -1,6 +1,6 @@
 # Hợp đồng API đơn hàng v1 — C-02, C-04, A-04 đến A-06
 
-Soạn ngày 13/11/2026, bổ sung hợp đồng Staff ngày 18/11/2026. `POST /api/orders/checkout` đã có trên `main`. Phần Staff bên dưới là hợp đồng triển khai Sprint 3 để backend và frontend làm song song. Các endpoint danh sách và chi tiết đơn của Customer cũng đang chờ triển khai. Khi thay đổi đường dẫn, JSON hoặc mã lỗi sau khi nhóm chốt, phải cập nhật file này và báo nhóm frontend trước khi merge.
+Soạn ngày 13/11/2026, bổ sung hợp đồng Staff ngày 18/11/2026. Phần Customer và Staff bên dưới là hợp đồng dùng chung cho backend, frontend và kiểm thử. Khi thay đổi đường dẫn, JSON hoặc mã lỗi sau khi nhóm chốt, phải cập nhật file này và báo nhóm frontend trước khi merge.
 
 ## Quy ước chung
 
@@ -130,7 +130,7 @@ Chi tiết đơn của Customer hiện tại. Thành công: `200 OK`.
 }
 ```
 
-`productName` đọc từ sản phẩm hiện tại, kể cả sản phẩm đã ẩn; tên có thể đổi sau khi Staff sửa sản phẩm. `order_items` chỉ lưu snapshot đơn giá. Nếu sau này cần cố định tên lúc mua, phải đổi schema trong một PR riêng và báo nhóm. Lỗi: 401/403; 404 `NOT_FOUND` nếu ID không tồn tại.
+`productName` đọc từ sản phẩm hiện tại, kể cả sản phẩm đã ẩn; tên có thể đổi sau khi Staff sửa sản phẩm. `order_items` chỉ lưu snapshot đơn giá. Nếu sau này cần cố định tên lúc mua, phải đổi schema trong một PR riêng và báo nhóm. ID sai định dạng hoặc nhỏ hơn 1 trả `400 VALIDATION_ERROR`. Đơn của Customer khác trả `403 FORBIDDEN`. ID hợp lệ nhưng đơn không tồn tại trả `404 NOT_FOUND`.
 
 ## Staff và Admin
 

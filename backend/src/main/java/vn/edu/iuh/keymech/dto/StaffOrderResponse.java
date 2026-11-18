@@ -12,14 +12,11 @@ public record StaffOrderResponse(
     Long id, String orderCode, Long customerId, String customerName, String customerEmail,
     @JsonFormat(pattern = "uuuu-MM-dd'T'HH:mm:ss") LocalDateTime orderDate,
     String receiverName, String receiverPhone, String shippingAddress, PaymentMethod paymentMethod,
-    PaymentStatus paymentStatus, OrderStatus status, BigDecimal totalAmount, List<Item> items
+    PaymentStatus paymentStatus, OrderStatus status, BigDecimal totalAmount, List<OrderLineResponse> items
 ) {
     public record Summary(
         Long id, String orderCode, Long customerId, String customerName, String customerEmail,
         @JsonFormat(pattern = "uuuu-MM-dd'T'HH:mm:ss") LocalDateTime orderDate,
         OrderStatus status, PaymentStatus paymentStatus, BigDecimal totalAmount
     ) {}
-
-    public record Item(Long id, Long productId, String productName, int quantity,
-                       BigDecimal unitPrice, BigDecimal lineTotal) {}
 }
