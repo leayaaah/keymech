@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.iuh.keymech.dto.OrderLineResponse;
 import vn.edu.iuh.keymech.dto.PageResponse;
 import vn.edu.iuh.keymech.dto.StaffOrderResponse;
 import vn.edu.iuh.keymech.exception.BusinessException;
@@ -18,6 +19,7 @@ import vn.edu.iuh.keymech.exception.ResourceNotFoundException;
 import vn.edu.iuh.keymech.model.Order;
 import vn.edu.iuh.keymech.model.OrderItem;
 import vn.edu.iuh.keymech.model.enums.OrderStatus;
+import vn.edu.iuh.keymech.model.enums.PaymentStatus;
 import vn.edu.iuh.keymech.repository.OrderRepository;
 import vn.edu.iuh.keymech.repository.OrderStockRepository;
 
@@ -67,8 +69,7 @@ public class StaffOrderService {
         if (quantity < 1) {
             throw invalid("Số lượng phải là số nguyên dương");
         }
-        Order order = orders.findLockedById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+        Order order = lockedOrder(id);
         OrderItem line = order.getItems().stream()
             .filter(item -> item.getId().equals(itemId))
             .findFirst()
@@ -98,6 +99,54 @@ public class StaffOrderService {
         return toDetail(order);
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public StaffOrderResponse updateStatus(long id, OrderStatus next) {
+        Order order = lockedOrder(id);
+        if (!permitsTransition(order.getStatus(), next)) {
+            throw new BusinessException("INVALID_TRANSITION", "Không thể chuyển đơn sang trạng thái yêu cầu");
+        }
+        if (next == OrderStatus.CANCELLED) {
+            if (order.getPaymentStatus() == PaymentStatus.PAID) {
+                throw new BusinessException("PAYMENT_NOT_EDITABLE", "Không thể hủy đơn đã thanh toán");
+            }
+            // Cùng thứ tự khóa sản phẩm với checkout.
+            var items = order.getItems().stream()
+                .sorted(Comparator.comparing(item -> item.getProduct().getId()))
+                .toList();
+            for (OrderItem item : items) {
+                if (stock.increaseStock(item.getProduct().getId(), item.getQuantity()) != 1) {
+                    throw new IllegalStateException("Không thể hoàn tồn khi hủy đơn");
+                }
+            }
+        }
+        order.setStatus(next);
+        return toDetail(order);
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public StaffOrderResponse updatePayment(long id, PaymentStatus next) {
+        Order order = lockedOrder(id);
+        if (order.getStatus() == OrderStatus.CANCELLED || order.getPaymentStatus() != PaymentStatus.UNPAID
+                || next != PaymentStatus.PAID) {
+            throw new BusinessException("PAYMENT_NOT_EDITABLE", "Không thể cập nhật thanh toán cho đơn hàng này");
+        }
+        order.setPaymentStatus(next);
+        return toDetail(order);
+    }
+
+    private Order lockedOrder(long id) {
+        return orders.findLockedById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+    }
+
+    private static boolean permitsTransition(OrderStatus current, OrderStatus next) {
+        return switch (current) {
+            case NEW -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
+            case CONFIRMED -> next == OrderStatus.SHIPPING || next == OrderStatus.CANCELLED;
+            case SHIPPING -> next == OrderStatus.COMPLETED;
+            case COMPLETED, CANCELLED -> false;
+        };
+    }
+
     private StaffOrderResponse.Summary toSummary(Order order) {
         var customer = order.getUser();
         return new StaffOrderResponse.Summary(order.getId(), order.getOrderCode(), customer.getId(),
@@ -107,14 +156,10 @@ public class StaffOrderService {
 
     private StaffOrderResponse toDetail(Order order) {
         var customer = order.getUser();
-        var items = order.getItems().stream().sorted(Comparator.comparing(OrderItem::getId))
-            .map(item -> new StaffOrderResponse.Item(item.getId(), item.getProduct().getId(),
-                item.getProduct().getName(), item.getQuantity(), item.getUnitPrice(), lineTotal(item, item.getQuantity())))
-            .toList();
         return new StaffOrderResponse(order.getId(), order.getOrderCode(), customer.getId(), customer.getFullName(),
             customer.getEmail(), order.getOrderDate(), order.getReceiverName(), order.getReceiverPhone(),
             order.getShippingAddress(), order.getPaymentMethod(), order.getPaymentStatus(),
-            order.getStatus(), order.getTotalAmount(), items);
+            order.getStatus(), order.getTotalAmount(), OrderLineResponse.fromItems(order.getItems()));
     }
 
     private static BigDecimal lineTotal(OrderItem item, int quantity) {

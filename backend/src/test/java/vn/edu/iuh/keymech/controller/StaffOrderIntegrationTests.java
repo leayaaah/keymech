@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ import vn.edu.iuh.keymech.model.enums.OrderStatus;
 import vn.edu.iuh.keymech.model.enums.PaymentMethod;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.model.enums.VisibilityStatus;
+import vn.edu.iuh.keymech.security.AppUserDetails;
 
 @SpringBootTest
 @Transactional
@@ -174,6 +176,82 @@ class StaffOrderIntegrationTests {
         mvc.perform(update(completed.getId(), completedItem, 3))
             .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("ORDER_NOT_EDITABLE"));
         assertThat(reloadProduct(product.getId()).getStockQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    void cancellationRestocksHiddenProductOnlyOnce() throws Exception {
+        product.setStatus(VisibilityStatus.HIDDEN);
+        Order order = order("CANCEL", "2026-11-18T10:30:00", OrderStatus.CONFIRMED);
+        mvc.perform(change(order.getId(), "status", "{\"status\":\"CANCELLED\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"))
+            .andExpect(jsonPath("$.paymentStatus").value("UNPAID"));
+        mvc.perform(change(order.getId(), "status", "{\"status\":\"CANCELLED\"}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("INVALID_TRANSITION"));
+        mvc.perform(change(order.getId(), "payment", "{\"paymentStatus\":\"PAID\"}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("PAYMENT_NOT_EDITABLE"));
+        assertThat(reloadProduct(product.getId()).getStockQuantity()).isEqualTo(7);
+    }
+
+    @Test
+    void paymentDoesNotChangeOrderStatusAndPaidOrderCannotBeCancelled() throws Exception {
+        Order order = order("PAY", "2026-11-18T10:30:00", OrderStatus.NEW);
+        order.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+        mvc.perform(change(order.getId(), "payment", "{\"paymentStatus\":\"PAID\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.paymentStatus").value("PAID"))
+            .andExpect(jsonPath("$.status").value("NEW"));
+        for (String payment : List.of("PAID", "UNPAID")) {
+            mvc.perform(change(order.getId(), "payment", "{\"paymentStatus\":\"" + payment + "\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("PAYMENT_NOT_EDITABLE"));
+        }
+        mvc.perform(change(order.getId(), "status", "{\"status\":\"CANCELLED\"}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("PAYMENT_NOT_EDITABLE"));
+        assertThat(reloadProduct(product.getId()).getStockQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    void shippingProgressRequiresValidStepsAndEnumStrings() throws Exception {
+        Order order = order("FLOW", "2026-11-18T10:30:00", OrderStatus.NEW);
+        mvc.perform(change(order.getId(), "status", "{\"status\":1}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+        mvc.perform(change(order.getId(), "status", "{\"status\":\"SHIPPING\"}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("INVALID_TRANSITION"));
+        for (String next : List.of("CONFIRMED", "SHIPPING", "COMPLETED")) {
+            mvc.perform(change(order.getId(), "status", "{\"status\":\"" + next + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value(next));
+        }
+    }
+
+    @Test
+    void customerListAndDetailUseSessionIdentity() throws Exception {
+        Order own = order("OWNER", "2026-11-18T10:30:00", OrderStatus.NEW);
+        User owner = customer;
+        customer = new User();
+        customer.setFullName("Another buyer");
+        customer.setEmail("other-" + unique + "@example.test");
+        customer.setPassword("test-only");
+        customer.setRole(Role.CUSTOMER);
+        entityManager.persist(customer);
+        Order other = order("OTHER", "2026-11-18T10:30:00", OrderStatus.NEW);
+        var principal = new AppUserDetails(owner);
+
+        mvc.perform(get("/api/orders/my").with(user(principal)).param("userId", customer.getId().toString()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].id").value(own.getId()));
+        mvc.perform(get("/api/orders/my/{id}", own.getId()).with(user(principal)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].quantity").value(2))
+            .andExpect(jsonPath("$.customerEmail").doesNotExist());
+        mvc.perform(get("/api/orders/my/{id}", other.getId()).with(user(principal)))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error").value("FORBIDDEN"));
+        mvc.perform(get("/api/orders/my/{id}", Long.MAX_VALUE).with(user(principal)))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.error").value("NOT_FOUND"));
+        mvc.perform(get("/api/orders/my")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/orders/my").with(user("admin").roles("ADMIN"))).andExpect(status().isForbidden());
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder change(
+            long id, String action, String body) {
+        return put("/api/staff/orders/{id}/{action}", id, action)
+            .with(user("staff").roles("STAFF")).contentType(MediaType.APPLICATION_JSON).content(body);
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder update(

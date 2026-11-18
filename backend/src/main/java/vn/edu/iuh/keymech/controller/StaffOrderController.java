@@ -10,11 +10,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
 import vn.edu.iuh.keymech.dto.PageResponse;
 import vn.edu.iuh.keymech.dto.StaffOrderResponse;
+import vn.edu.iuh.keymech.dto.StaffOrderUpdateRequest;
 import vn.edu.iuh.keymech.dto.UpdateOrderItemQuantityRequest;
 import vn.edu.iuh.keymech.exception.BusinessException;
 import vn.edu.iuh.keymech.model.enums.OrderStatus;
+import vn.edu.iuh.keymech.model.enums.PaymentStatus;
 import vn.edu.iuh.keymech.service.StaffOrderService;
 
 @RestController
@@ -55,6 +58,30 @@ public class StaffOrderController {
                 "Số lượng phải là số nguyên dương");
         }
         return orders.updateQuantity(id, itemId, quantity.intValue());
+    }
+
+    @PutMapping("/{id}/status")
+    public StaffOrderResponse updateStatus(@PathVariable long id, @RequestBody StaffOrderUpdateRequest.Status request) {
+        validateId(id, "Mã đơn hàng");
+        return orders.updateStatus(id, parseStatus(request.status(), OrderStatus.class, "Trạng thái đơn hàng"));
+    }
+
+    @PutMapping("/{id}/payment")
+    public StaffOrderResponse updatePayment(@PathVariable long id, @RequestBody StaffOrderUpdateRequest.Payment request) {
+        validateId(id, "Mã đơn hàng");
+        PaymentStatus next = parseStatus(request.paymentStatus(), PaymentStatus.class, "Trạng thái thanh toán");
+        return orders.updatePayment(id, next);
+    }
+
+    private static <T extends Enum<T>> T parseStatus(JsonNode value, Class<T> type, String label) {
+        if (value != null && value.isTextual()) {
+            for (T status : type.getEnumConstants()) {
+                if (status.name().equals(value.asText())) {
+                    return status;
+                }
+            }
+        }
+        throw new BusinessException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", label + " không hợp lệ");
     }
 
     private static void validateId(long id, String label) {
