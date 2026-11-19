@@ -1,6 +1,7 @@
 package vn.edu.iuh.keymech.tracking;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -26,12 +27,12 @@ public class ActivityWriter {
 
     @Async
     @Transactional
-    public void write(EventType type, String visitorId, Long userId, Long productId,
+    public CompletableFuture<Void> write(EventType type, String visitorId, Long userId, Long productId,
                       Long categoryId, String keyword) {
         try {
             if (userId != null) {
                 User user = userRepository.findById(userId).orElse(null);
-                if (user == null || user.getRole() != Role.CUSTOMER) return;
+                if (user == null || user.getRole() != Role.CUSTOMER) return CompletableFuture.completedFuture(null);
             }
             UserActivity activity = new UserActivity();
             activity.setVisitorId(visitorId);
@@ -45,17 +46,19 @@ public class ActivityWriter {
         } catch (Exception e) {
             log.warn("Could not persist user activity ({})", e.getClass().getSimpleName());
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     @Async
     @Transactional
-    public void attachGuestActivities(String visitorId, Long userId) {
+    public CompletableFuture<Void> attachGuestActivities(String visitorId, Long userId) {
         try {
             User user = userRepository.findById(userId).orElse(null);
-            if (user == null || user.getRole() != Role.CUSTOMER) return;
+            if (user == null || user.getRole() != Role.CUSTOMER) return CompletableFuture.completedFuture(null);
             activityRepository.attachGuestActivities(visitorId, userId);
         } catch (Exception e) {
             log.warn("Could not attach guest activities ({})", e.getClass().getSimpleName());
         }
+        return CompletableFuture.completedFuture(null);
     }
 }

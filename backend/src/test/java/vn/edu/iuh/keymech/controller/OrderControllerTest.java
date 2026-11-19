@@ -23,6 +23,7 @@ import vn.edu.iuh.keymech.dto.CheckoutResponse;
 import vn.edu.iuh.keymech.exception.BusinessException;
 import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.OrderStatus;
+import vn.edu.iuh.keymech.model.enums.EventType;
 import vn.edu.iuh.keymech.model.enums.PaymentMethod;
 import vn.edu.iuh.keymech.model.enums.PaymentStatus;
 import vn.edu.iuh.keymech.model.enums.Role;
@@ -51,6 +52,7 @@ class OrderControllerTest {
 
         assertEquals(201, response.getStatusCode().value());
         assertNull(request.getSession().getAttribute(SessionKeys.CART));
+        verify(activityTracker).record(EventType.PURCHASE, "visitor-test", 7L, 3L, null, null);
         verify(email).sendConfirmation(result);
     }
 
@@ -80,6 +82,7 @@ class OrderControllerTest {
         assertThrows(BusinessException.class, () -> controller.checkout(body, customer(), request));
 
         assertEquals(1, ((LinkedHashMap<?, ?>) request.getSession().getAttribute(SessionKeys.CART)).size());
+        verify(activityTracker, never()).record(eq(EventType.PURCHASE), any(), any(), any(), any(), any());
         verify(email, never()).sendConfirmation(any());
     }
 
@@ -87,6 +90,7 @@ class OrderControllerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(SessionKeys.CART, new LinkedHashMap<>(java.util.Map.of(3L, 1)));
+        session.setAttribute(SessionKeys.VISITOR_ID, "visitor-test");
         request.setSession(session);
         return request;
     }

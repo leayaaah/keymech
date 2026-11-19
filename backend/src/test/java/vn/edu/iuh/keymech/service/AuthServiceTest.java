@@ -41,6 +41,8 @@ import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.security.AppUserDetails;
+import vn.edu.iuh.keymech.tracking.ActivityTracker;
+import vn.edu.iuh.keymech.util.SessionKeys;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -65,6 +67,7 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock SecurityContextRepository securityContextRepository;
     @Mock EmailService emailService;
+    @Mock ActivityTracker activityTracker;
 
     @InjectMocks AuthService authService;
 
@@ -182,6 +185,7 @@ class AuthServiceTest {
             MockHttpSession session = new MockHttpSession();
             request.setSession(session);
             session.setAttribute("cart", Map.of(1L, 2));
+            session.setAttribute(SessionKeys.VISITOR_ID, "visitor-test");
 
             LoginRequest loginRequest = new LoginRequest("customer@example.com", "password");
             User user = new User();
@@ -205,6 +209,7 @@ class AuthServiceTest {
             // Không invalidate: session cũ vẫn tồn tại và id được giữ (MockHttpSession)
             assertThat(request.getSession(false)).isSameAs(session);
             verify(securityContextRepository).saveContext(any(SecurityContext.class), eq(request), any());
+            verify(activityTracker).attachGuestActivities("visitor-test", 1L);
         }
 
         @Test

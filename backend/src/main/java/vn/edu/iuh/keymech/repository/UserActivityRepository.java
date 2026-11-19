@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.edu.iuh.keymech.model.UserActivity;
+import vn.edu.iuh.keymech.model.enums.EventType;
 
 public interface UserActivityRepository extends JpaRepository<UserActivity, Long> {
     List<UserActivity> findByVisitorIdOrderByCreatedAtDesc(String visitorId);
