@@ -27,6 +27,7 @@ import ChangePasswordPage from '../pages/customer/ChangePasswordPage';
 // Staff Pages
 import StaffDashboardPage from '../pages/staff/StaffDashboardPage';
 import StaffOrdersPage from '../pages/staff/StaffOrdersPage';
+import StaffOrderDetailPage from '../pages/staff/StaffOrderDetailPage';
 import StaffProductsPage from '../pages/staff/StaffProductsPage';
 import StaffCustomRequestsPage from '../pages/staff/StaffCustomRequestsPage';
 
@@ -80,6 +81,7 @@ export function AppRoutes() {
         <Route path="/staff" element={<StaffLayout />}>
           <Route index element={<StaffDashboardPage />} />
           <Route path="orders" element={<StaffOrdersPage />} />
+          <Route path="orders/:id" element={<StaffOrderDetailPage />} />
           <Route path="products" element={<StaffProductsPage />} />
           <Route path="custom-requests" element={<StaffCustomRequestsPage />} />
         </Route>
