@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.cors.CorsConfiguration;
@@ -62,11 +63,13 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http,
                                     CartAccessManager cartAccess,
                                     SecurityContextRepository repo,
-                                    @Qualifier("corsConfigurationSource") CorsConfigurationSource cors) throws Exception {
+                                    @Qualifier("corsConfigurationSource") CorsConfigurationSource cors,
+                                    VisitorFilter visitorFilter) throws Exception {
         http
           .csrf(AbstractHttpConfigurer::disable)       // giai đoạn dev; quyết định bật lại ở Sprint 4
           .cors(c -> c.configurationSource(cors))
           .securityContext(sc -> sc.securityContextRepository(repo))
+          .addFilterAfter(visitorFilter, SecurityContextHolderFilter.class)
           .authorizeHttpRequests(a -> a
             // Matcher cụ thể đặt trước matcher chung
             .requestMatchers("/api/admin/**").hasRole("ADMIN")

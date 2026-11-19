@@ -29,13 +29,15 @@ import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.security.AppUserDetails;
 import vn.edu.iuh.keymech.service.OrderEmailService;
 import vn.edu.iuh.keymech.service.OrderService;
+import vn.edu.iuh.keymech.tracking.ActivityTracker;
 import vn.edu.iuh.keymech.util.SessionKeys;
 
 class OrderControllerTest {
 
     private final OrderService orders = org.mockito.Mockito.mock(OrderService.class);
     private final OrderEmailService email = org.mockito.Mockito.mock(OrderEmailService.class);
-    private final OrderController controller = new OrderController(orders, email);
+    private final ActivityTracker activityTracker = org.mockito.Mockito.mock(ActivityTracker.class);
+    private final OrderController controller = new OrderController(orders, email, activityTracker);
     private final CheckoutRequest body = new CheckoutRequest("Nguyễn An", "0901234567", "Hà Nội", PaymentMethod.COD);
 
     @Test

@@ -23,4 +23,6 @@ public interface ActivityTracker {
      */
     void record(EventType type, String visitorId, Long userId,
                 Long productId, Long categoryId, String keyword);
+
+    void attachGuestActivities(String visitorId, Long userId);
 }

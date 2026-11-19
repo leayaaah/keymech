@@ -1,75 +1,65 @@
 package vn.edu.iuh.keymech.tracking;
 
-import java.time.LocalDateTime;
-
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
-import vn.edu.iuh.keymech.model.User;
-import vn.edu.iuh.keymech.model.UserActivity;
+import org.springframework.stereotype.Service;
 import vn.edu.iuh.keymech.model.enums.EventType;
-import vn.edu.iuh.keymech.model.enums.Role;
-import vn.edu.iuh.keymech.repository.UserActivityRepository;
-import vn.edu.iuh.keymech.repository.UserRepository;
 
-/**
- * Implementation ActivityTracker — ghi sự kiện hành vi bất đồng bộ.
- * Chỉ ghi Guest (visitorId) và Customer; Staff và Admin bị bỏ qua.
- * Không ghi IP/User-Agent. Lỗi chỉ ghi log, không làm chậm request chính.
- *
- * Lưu ý: Phương sở hữu package tracking; Thuận và Thùy chỉ gọi.
- */
+/** Request-facing facade: validates events, deduplicates views, and schedules persistence. */
 @Slf4j
 @Service
 public class ActivityTrackerImpl implements ActivityTracker {
+    private static final Duration VIEW_DEDUP_WINDOW = Duration.ofSeconds(60);
+    private final ActivityWriter activityWriter;
+    private final ConcurrentMap<String, Instant> recentViews = new ConcurrentHashMap<>();
 
-    private final UserActivityRepository userActivityRepository;
-    private final UserRepository userRepository;
-
-    public ActivityTrackerImpl(UserActivityRepository userActivityRepository,
-                               UserRepository userRepository) {
-        this.userActivityRepository = userActivityRepository;
-        this.userRepository = userRepository;
+    public ActivityTrackerImpl(ActivityWriter activityWriter) {
+        this.activityWriter = activityWriter;
     }
 
     @Override
-    @Async
-    @Transactional(rollbackFor = Exception.class)
     public void record(EventType type, String visitorId, Long userId,
                        Long productId, Long categoryId, String keyword) {
         try {
-            // Không ghi sự kiện của Staff và Admin
-            if (userId != null) {
-                User u = userRepository.findById(userId).orElse(null);
-                if (u == null || u.getRole() == Role.STAFF || u.getRole() == Role.ADMIN) {
-                    return;
-                }
-            }
-            // Guest không có visitorId thì bỏ qua (không thể ghi)
-            if (userId == null && (visitorId == null || visitorId.isBlank())) {
-                return;
-            }
-
-            UserActivity a = new UserActivity();
-            a.setVisitorId(visitorId);
-            a.setUserId(userId);
-            a.setEventType(type);
-            a.setProductId(productId);
-            a.setCategoryId(categoryId);
-            a.setKeyword(truncate(keyword, 100));
-            a.setCreatedAt(LocalDateTime.now());
-
-            userActivityRepository.save(a);
+            if (type == null || visitorId == null || visitorId.isBlank()) return;
+            if (type == EventType.VIEW_PRODUCT && (productId == null || isDuplicateView(visitorId, productId))) return;
+            if (type == EventType.SEARCH && (keyword == null || keyword.isBlank())) return;
+            activityWriter.write(type, visitorId, userId, productId, categoryId, truncate(keyword, 100));
         } catch (Exception e) {
-            // Lỗi ghi tracking không làm ảnh hưởng request chính
-            log.warn("Không thể ghi user_activity ({}): {}", type, e.getMessage());
+            log.warn("Could not schedule activity tracking ({})", type);
         }
     }
 
-    private static String truncate(String s, int max) {
-        if (s == null) return null;
-        return s.length() <= max ? s : s.substring(0, max);
+    @Override
+    public void attachGuestActivities(String visitorId, Long userId) {
+        if (visitorId == null || visitorId.isBlank() || userId == null) return;
+        try {
+            activityWriter.attachGuestActivities(visitorId, userId);
+        } catch (Exception e) {
+            log.warn("Could not schedule guest activity attachment");
+        }
+    }
+
+    private boolean isDuplicateView(String visitorId, Long productId) {
+        Instant now = Instant.now();
+        String key = visitorId + ":" + productId;
+        Instant previous = recentViews.put(key, now);
+        if (recentViews.size() > 10_000) {
+            Instant cutoff = now.minus(VIEW_DEDUP_WINDOW);
+            recentViews.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
+        }
+        if (previous != null && previous.plus(VIEW_DEDUP_WINDOW).isAfter(now)) {
+            recentViews.put(key, previous);
+            return true;
+        }
+        return false;
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) return null;
+        return value.length() <= max ? value : value.substring(0, max);
     }
 }

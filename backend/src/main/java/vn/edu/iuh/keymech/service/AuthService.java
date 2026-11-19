@@ -31,6 +31,7 @@ import vn.edu.iuh.keymech.model.User;
 import vn.edu.iuh.keymech.model.enums.Role;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.security.AppUserDetails;
+import vn.edu.iuh.keymech.tracking.ActivityTracker;
 import vn.edu.iuh.keymech.util.CodeGenerator;
 import vn.edu.iuh.keymech.util.SessionKeys;
 
@@ -56,6 +57,7 @@ public class AuthService {
     private final SecurityContextRepository securityContextRepository;
     private final EmailService emailService;
     private final CodeGenerator codeGenerator;
+    private final ActivityTracker activityTracker;
     private Clock clock = Clock.systemUTC();
 
     // Bộ giới hạn yêu cầu đặt lại mật khẩu trong bộ nhớ: email -> trạng thái cửa sổ
@@ -66,13 +68,15 @@ public class AuthService {
                        AuthenticationManager authenticationManager,
                        SecurityContextRepository securityContextRepository,
                        EmailService emailService,
-                       CodeGenerator codeGenerator) {
+                       CodeGenerator codeGenerator,
+                       ActivityTracker activityTracker) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
         this.emailService = emailService;
         this.codeGenerator = codeGenerator;
+        this.activityTracker = activityTracker;
     }
 
     public UserResponse login(LoginRequest request, HttpServletRequest httpRequest) {
@@ -92,7 +96,12 @@ public class AuthService {
 
         // Đổi mã phiên để ngăn chiếm quyền phiên mà không vô hiệu hóa phiên cũ
         HttpSession session = httpRequest.getSession(true);
+        String visitorId = (String) session.getAttribute(SessionKeys.VISITOR_ID);
         httpRequest.changeSessionId();
+
+        if (userDetails.getRole().equals("CUSTOMER")) {
+            activityTracker.attachGuestActivities(visitorId, userDetails.getId());
+        }
 
         // Nhân viên/Admin xóa giỏ; khách hàng giữ nguyên giỏ trong phiên.
         if (userDetails.getRole().equals("STAFF") || userDetails.getRole().equals("ADMIN")) {

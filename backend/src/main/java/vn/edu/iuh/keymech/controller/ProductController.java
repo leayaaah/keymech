@@ -72,13 +72,10 @@ public class ProductController {
     @GetMapping("/api/products")
     public ResponseEntity<PageResponse<ProductsResponse>> list(@ModelAttribute ProductsFilterRequest f) {
         PageResponse<ProductsResponse> result = PageResponse.of(productService.list(f));
-        // Ghi tracking SEARCH (nếu có keyword) hoặc VIEW_PRODUCT (danh sách)
+        // Chỉ ghi SEARCH khi có từ khóa; VIEW_PRODUCT dành cho trang chi tiết sản phẩm.
         if (f.keyword() != null && !f.keyword().isBlank()) {
             activityTracker.record(EventType.SEARCH, currentVisitorId(), currentUserId(),
                     null, f.categoryId(), f.keyword());
-        } else {
-            activityTracker.record(EventType.VIEW_PRODUCT, currentVisitorId(), currentUserId(),
-                    null, f.categoryId(), null);
         }
         return ResponseEntity.ok(result);
     }
