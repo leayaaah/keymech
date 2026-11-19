@@ -88,7 +88,11 @@ export function LoginPage() {
       toast.success('Đăng nhập thành công!');
 
       // Điều hướng theo trạng thái chuyển trang trước đó hoặc theo vai trò
-      const from = location.state?.from?.pathname;
+      const redirect = new URLSearchParams(location.search).get('redirect');
+      const isOrderPath = redirect === '/checkout'
+        || /^\/customer\/orders(?:\/\d+(?:\/success)?)?$/.test(redirect ?? '');
+      const from = location.state?.from?.pathname
+        || (loggedUser.role === 'CUSTOMER' && isOrderPath ? redirect : null);
       if (from && from !== '/login') {
         navigate(from, { replace: true });
       } else if (loggedUser.role === 'ADMIN') {
