@@ -94,7 +94,7 @@ export function AdminLayout() {
                   backgroundColor: isActive ? 'rgba(165, 180, 252, 0.15)' : 'transparent',
                 })}
               >
-                Quản lý nhân viên
+                Quản lý người dùng
               </NavLink>
               <NavLink
                 to="/admin/reports"
