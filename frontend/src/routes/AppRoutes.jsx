@@ -19,6 +19,7 @@ import RegisterPage from '../pages/guest/RegisterPage';
 
 // Customer Pages
 import CustomerProfilePage from '../pages/customer/CustomerProfilePage';
+import CheckoutPage from '../pages/customer/CheckoutPage';
 import CustomerOrdersPage from '../pages/customer/CustomerOrdersPage';
 import CustomerOrderDetailPage from '../pages/customer/CustomerOrderDetailPage';
 import CustomerCustomRequestsPage from '../pages/customer/CustomerCustomRequestsPage';
@@ -62,10 +63,12 @@ export function AppRoutes() {
 
         {/* Khu vực khách hàng cá nhân: Chỉ Customer */}
         <Route element={<ProtectedRoute roles={['CUSTOMER']} />}>
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/customer" element={<CustomerLayout />}>
             <Route path="profile" element={<CustomerProfilePage />} />
             <Route path="orders" element={<CustomerOrdersPage />} />
             <Route path="orders/:id" element={<CustomerOrderDetailPage />} />
+            <Route path="orders/:id/success" element={<CustomerOrderDetailPage success />} />
             <Route
               path="custom-requests"
               element={<CustomerCustomRequestsPage />}

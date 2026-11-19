@@ -13,7 +13,7 @@ export function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadVersion, setReloadVersion] = useState(0);
-  const [updating, setUpdating] = useState(null); // productId đang cập nhật
+  const [updating, setUpdating] = useState(false);
 
   const loadCart = () => {
     setLoading(true);
@@ -40,7 +40,7 @@ export function CartPage() {
   }, [reloadVersion]);
 
   const handleIncrease = async (item) => {
-    setUpdating(item.productId);
+    setUpdating(true);
     try {
       const updated = await cartApi.updateItem(item.productId, { quantity: item.quantity + 1 });
       setItems(updated.items ?? []);
@@ -48,13 +48,13 @@ export function CartPage() {
     } catch (err) {
       toast.error(err?.message || 'Không thể cập nhật');
     } finally {
-      setUpdating(null);
+      setUpdating(false);
     }
   };
 
   const handleDecrease = async (item) => {
     if (item.quantity <= 1) return;
-    setUpdating(item.productId);
+    setUpdating(true);
     try {
       const updated = await cartApi.updateItem(item.productId, { quantity: item.quantity - 1 });
       setItems(updated.items ?? []);
@@ -62,22 +62,26 @@ export function CartPage() {
     } catch (err) {
       toast.error(err?.message || 'Không thể cập nhật');
     } finally {
-      setUpdating(null);
+      setUpdating(false);
     }
   };
 
   const handleRemove = async (productId) => {
+    setUpdating(true);
     try {
       await cartApi.removeItem(productId);
       toast.success('Đã xóa sản phẩm khỏi giỏ');
       loadCart();
     } catch (err) {
       toast.error(err?.message || 'Không thể xóa');
+    } finally {
+      setUpdating(false);
     }
   };
 
   const handleClear = async () => {
     if (!window.confirm('Bạn có chắc muốn xóa toàn bộ giỏ hàng?')) return;
+    setUpdating(true);
     try {
       await cartApi.clear();
       setItems([]);
@@ -85,6 +89,8 @@ export function CartPage() {
       toast.success('Đã xóa giỏ hàng');
     } catch (err) {
       toast.error(err?.message || 'Không thể xóa giỏ');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -92,7 +98,7 @@ export function CartPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', margin: 0 }}>Giỏ hàng của bạn</h1>
-        {items.length > 0 && (
+        {!loading && !error && !updating && items.length > 0 && (
           <button onClick={handleClear} style={{ padding: '0.4rem 0.8rem', border: '1px solid #ef4444', color: '#ef4444', background: '#fff', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
             Xóa giỏ
           </button>
@@ -135,9 +141,9 @@ export function CartPage() {
 
                 {/* Quantity controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button onClick={() => handleDecrease(item)} disabled={updating === item.productId} style={qtyBtnStyle(updating === item.productId)}>−</button>
+                  <button onClick={() => handleDecrease(item)} disabled={updating} style={qtyBtnStyle(updating)}>−</button>
                   <span style={{ width: 32, textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                  <button onClick={() => handleIncrease(item)} disabled={updating === item.productId} style={qtyBtnStyle(updating === item.productId)}>+</button>
+                  <button onClick={() => handleIncrease(item)} disabled={updating} style={qtyBtnStyle(updating)}>+</button>
                 </div>
 
                 {/* Subtotal */}
@@ -146,7 +152,7 @@ export function CartPage() {
                 </div>
 
                 {/* Remove */}
-                <button onClick={() => handleRemove(item.productId)} disabled={updating === item.productId} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#9ca3af', padding: '0.25rem' }}>✕</button>
+                <button onClick={() => handleRemove(item.productId)} disabled={updating} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#9ca3af', padding: '0.25rem' }}>✕</button>
               </div>
             ))}
           </div>
@@ -163,7 +169,12 @@ export function CartPage() {
               <span>Tổng cộng</span>
               <span style={{ color: '#dc2626' }}>{formatVND(totalAmount)}</span>
             </div>
-            <Link to="/products" style={{ display: 'block', textAlign: 'center', padding: '0.75rem', backgroundColor: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, marginTop: '1rem' }}>
+            {!updating && (
+              <Link to="/checkout" style={{ display: 'block', textAlign: 'center', padding: '0.75rem', backgroundColor: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, marginTop: '1rem' }}>
+                Thanh toán
+              </Link>
+            )}
+            <Link to="/products" style={{ display: 'block', textAlign: 'center', marginTop: '0.75rem' }}>
               Tiếp tục mua sắm
             </Link>
           </div>

@@ -1,0 +1,113 @@
+.customer-order-page {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer-order-page h1 {
+  font-size: 1.65rem;
+}
+
+.customer-order-page h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.order-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.order-panel fieldset {
+  display: grid;
+  gap: 0.55rem;
+  border: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.order-panel input,
+.order-panel textarea,
+.order-panel select {
+  width: 100%;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  padding: 0.6rem;
+}
+
+.order-lines,
+.order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.order-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.order-lines strong {
+  flex-shrink: 0;
+}
+
+.order-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.order-facts dt {
+  font-weight: 600;
+}
+
+.order-facts dd {
+  margin: 0;
+}
+
+.order-pagination,
+.order-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.order-alert p {
+  color: #991b1b;
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.order-primary {
+  display: inline-block;
+  background: #2563eb;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.order-primary:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
