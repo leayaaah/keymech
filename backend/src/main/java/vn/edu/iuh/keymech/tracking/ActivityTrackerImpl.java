@@ -2,6 +2,7 @@ package vn.edu.iuh.keymech.tracking;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,9 +16,11 @@ import vn.edu.iuh.keymech.model.enums.EventType;
 @Service
 public class ActivityTrackerImpl implements ActivityTracker {
     private static final Duration VIEW_DEDUP_WINDOW = Duration.ofSeconds(60);
+    private static final Duration VISITOR_LINK_TTL = Duration.ofMinutes(30);
     private final ActivityWriter activityWriter;
     private final ConcurrentMap<String, Instant> recentViews = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CompletableFuture<Void>> pendingByVisitor = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, VisitorLink> customerByVisitor = new ConcurrentHashMap<>();
 
     public ActivityTrackerImpl(ActivityWriter activityWriter) {
         this.activityWriter = activityWriter;
@@ -30,8 +33,11 @@ public class ActivityTrackerImpl implements ActivityTracker {
             if (type == null || visitorId == null || visitorId.isBlank()) return;
             if (type == EventType.VIEW_PRODUCT && (productId == null || isDuplicateView(visitorId, productId))) return;
             if (type == EventType.SEARCH && (keyword == null || keyword.isBlank())) return;
-            enqueue(visitorId, () -> activityWriter.write(type, visitorId, userId,
-                productId, categoryId, truncate(keyword, 100)));
+            synchronized (pendingByVisitor) {
+                Long resolvedUserId = userId != null ? userId : linkedCustomer(visitorId);
+                enqueue(visitorId, () -> activityWriter.write(type, visitorId, resolvedUserId,
+                    productId, categoryId, truncate(keyword, 100)));
+            }
         } catch (Exception e) {
             log.warn("Could not schedule activity tracking ({})", type);
         }
@@ -41,9 +47,33 @@ public class ActivityTrackerImpl implements ActivityTracker {
     public void attachGuestActivities(String visitorId, Long userId) {
         if (visitorId == null || visitorId.isBlank() || userId == null) return;
         try {
-            enqueue(visitorId, () -> activityWriter.attachGuestActivities(visitorId, userId));
+            synchronized (pendingByVisitor) {
+                customerByVisitor.put(visitorId, new VisitorLink(userId, Instant.now().plus(VISITOR_LINK_TTL)));
+                cleanExpiredVisitorLinks();
+                enqueue(visitorId, () -> activityWriter.attachGuestActivities(visitorId, userId));
+            }
         } catch (Exception e) {
             log.warn("Could not schedule guest activity attachment");
+        }
+    }
+
+    private Long linkedCustomer(String visitorId) {
+        VisitorLink link = customerByVisitor.get(visitorId);
+        if (link == null) return null;
+        if (link.expiresAt().isBefore(Instant.now())) {
+            customerByVisitor.remove(visitorId, link);
+            return null;
+        }
+        return link.userId();
+    }
+
+    private void cleanExpiredVisitorLinks() {
+        Instant now = Instant.now();
+        customerByVisitor.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
+        if (customerByVisitor.size() > 10_000) {
+            customerByVisitor.entrySet().stream()
+                .min(Map.Entry.comparingByValue((first, second) -> first.expiresAt().compareTo(second.expiresAt())))
+                .ifPresent(entry -> customerByVisitor.remove(entry.getKey(), entry.getValue()));
         }
     }
 
@@ -86,4 +116,6 @@ public class ActivityTrackerImpl implements ActivityTracker {
         if (value == null) return null;
         return value.length() <= max ? value : value.substring(0, max);
     }
+
+    private record VisitorLink(Long userId, Instant expiresAt) {}
 }
