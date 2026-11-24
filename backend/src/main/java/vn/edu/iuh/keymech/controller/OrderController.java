@@ -22,6 +22,8 @@ import vn.edu.iuh.keymech.security.AppUserDetails;
 import vn.edu.iuh.keymech.service.OrderEmailService;
 import vn.edu.iuh.keymech.service.OrderService;
 import vn.edu.iuh.keymech.util.SessionKeys;
+import vn.edu.iuh.keymech.tracking.ActivityTracker;
+import vn.edu.iuh.keymech.model.enums.EventType;
 
 @Slf4j
 @RestController
@@ -30,10 +32,13 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderEmailService orderEmailService;
+    private final ActivityTracker activityTracker;
 
-    public OrderController(OrderService orderService, OrderEmailService orderEmailService) {
+    public OrderController(OrderService orderService, OrderEmailService orderEmailService,
+                           ActivityTracker activityTracker) {
         this.orderService = orderService;
         this.orderEmailService = orderEmailService;
+        this.activityTracker = activityTracker;
     }
 
     @PostMapping("/checkout")
@@ -56,6 +61,11 @@ public class OrderController {
             OrderService.PlacedOrder placed = orderService.placeOrder(
                 principal.getId(), body, new HashMap<>(storedCart));
             // Lời gọi service đã commit. Lỗi email không làm đổi kết quả đặt hàng.
+            String visitorId = (String) session.getAttribute(SessionKeys.VISITOR_ID);
+            for (Long productId : storedCart.keySet()) {
+                activityTracker.record(EventType.PURCHASE, visitorId, principal.getId(),
+                    productId, null, null);
+            }
             session.removeAttribute(SessionKeys.CART);
             try {
                 orderEmailService.sendConfirmation(placed);
