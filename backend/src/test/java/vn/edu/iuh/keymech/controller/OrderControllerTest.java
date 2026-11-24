@@ -14,8 +14,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import vn.edu.iuh.keymech.dto.CheckoutRequest;
@@ -31,6 +33,8 @@ import vn.edu.iuh.keymech.security.AppUserDetails;
 import vn.edu.iuh.keymech.service.OrderEmailService;
 import vn.edu.iuh.keymech.service.OrderService;
 import vn.edu.iuh.keymech.tracking.ActivityTracker;
+import vn.edu.iuh.keymech.tracking.ActivityTrackerImpl;
+import vn.edu.iuh.keymech.tracking.ActivityWriter;
 import vn.edu.iuh.keymech.util.SessionKeys;
 
 class OrderControllerTest {
@@ -70,6 +74,26 @@ class OrderControllerTest {
             () -> controller.checkout(body, customer(), request));
         assertEquals("EMPTY_CART", error.getCode());
         verify(orders).placeOrder(eq(7L), eq(body), any());
+    }
+
+    @Test
+    @DisplayName("TC-TRK-05: lỗi ghi PURCHASE vẫn trả 201, xóa giỏ và lên lịch email")
+    void checkout_purchaseTrackingFailure_stillCompletes() {
+        MockHttpServletRequest request = requestWithCart();
+        OrderService.PlacedOrder result = placedOrder();
+        ActivityWriter writer = org.mockito.Mockito.mock(ActivityWriter.class);
+        OrderController checkoutWithTracking = new OrderController(orders, email, new ActivityTrackerImpl(writer));
+        when(orders.placeOrder(eq(7L), eq(body), any())).thenReturn(result);
+        when(writer.write(EventType.PURCHASE, "visitor-test", 7L, 3L, null, null))
+            .thenReturn(CompletableFuture.failedFuture(new DataIntegrityViolationException("Tracking write failed")));
+
+        var response = checkoutWithTracking.checkout(body, customer(), request);
+
+        assertEquals(201, response.getStatusCode().value());
+        assertEquals(result.response(), response.getBody());
+        assertNull(request.getSession().getAttribute(SessionKeys.CART));
+        verify(writer).write(EventType.PURCHASE, "visitor-test", 7L, 3L, null, null);
+        verify(email).sendConfirmation(result);
     }
 
     @Test
