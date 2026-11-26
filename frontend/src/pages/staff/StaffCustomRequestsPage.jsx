@@ -97,45 +97,45 @@ export function StaffCustomRequestsPage() {
         <EmptyState title="Không có yêu cầu Custom nào" />
       ) : (
         <div className="km-table-wrap">
-          <table className="km-table">
-            <thead>
-              <tr>
-                <th>Mã yêu cầu</th>
-                <th>Khách hàng</th>
-                <th>Cấu hình</th>
-                <th>Báo giá / Ngân sách</th>
-                <th>Ngày gửi</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
+          <table className="km-table" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Mã yêu cầu</th>
+                <th scope="col" role="columnheader">Khách hàng</th>
+                <th scope="col" role="columnheader">Cấu hình</th>
+                <th scope="col" role="columnheader">Báo giá / Ngân sách</th>
+                <th scope="col" role="columnheader">Ngày gửi</th>
+                <th scope="col" role="columnheader">Trạng thái</th>
+                <th scope="col" role="columnheader">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {requests.map((req) => (
-                <tr key={req.id}>
-                  <td>
+                <tr role="row" key={req.id}>
+                  <td role="cell" data-label="Mã yêu cầu">
                     <strong>{req.requestCode || `CUS-${req.id}`}</strong>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Khách hàng">
                     <div>{req.customerName}</div>
                     <div className="km-field-hint">{req.customerEmail}</div>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Cấu hình">
                     {req.layout} • {req.switchType} ({req.switchName})
                   </td>
-                  <td>
+                  <td role="cell" data-label="Báo giá / Ngân sách">
                     {req.quotedPrice
                       ? formatVND(req.quotedPrice)
                       : req.budget
                         ? `NS: ${formatVND(req.budget)}`
                         : '—'}
                   </td>
-                  <td>{formatDate(req.createdAt)}</td>
-                  <td>
+                  <td role="cell" data-label="Ngày gửi">{formatDate(req.createdAt)}</td>
+                  <td role="cell" data-label="Trạng thái">
                     <span className={customBadgeClass(req.status)}>
                       {customStatusLabels[req.status] || req.status}
                     </span>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Thao tác">
                     <Link to={`/staff/custom-requests/${req.id}`} className="km-btn km-btn-soft km-btn-sm">
                       Xử lý
                     </Link>

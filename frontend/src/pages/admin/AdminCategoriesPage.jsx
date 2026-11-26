@@ -144,30 +144,30 @@ export function AdminCategoriesPage() {
         <EmptyState title="Chưa có danh mục nào" />
       ) : (
         <div className="km-table-wrap">
-          <table className="km-table">
-            <thead>
-              <tr>
-                <th>Tên danh mục</th>
-                <th>Slug</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
+          <table className="km-table" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Tên danh mục</th>
+                <th scope="col" role="columnheader">Slug</th>
+                <th scope="col" role="columnheader">Trạng thái</th>
+                <th scope="col" role="columnheader">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {categories.map((cat) => (
-                <tr key={cat.id}>
-                  <td>
+                <tr role="row" key={cat.id}>
+                  <td role="cell" data-label="Tên danh mục">
                     <strong>{cat.name}</strong>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Slug">
                     <code>{cat.slug}</code>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Trạng thái">
                     <span className={cat.status === 'ACTIVE' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
                       {cat.status === 'ACTIVE' ? 'Đang hiện' : 'Đã ẩn'}
                     </span>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Thao tác">
                     <button
                       type="button"
                       className={`km-btn km-btn-sm ${cat.status === 'ACTIVE' ? 'km-btn-danger' : 'km-btn-primary'}`}

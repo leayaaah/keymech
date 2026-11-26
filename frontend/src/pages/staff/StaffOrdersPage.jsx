@@ -179,43 +179,43 @@ function OrdersList({ params, setParams }) {
       ) : (
         <>
           <div className="km-table-wrap">
-            <table className="km-table">
-              <thead>
-                <tr>
-                  <th>Mã đơn</th>
-                  <th>Khách hàng</th>
-                  <th>Ngày đặt</th>
-                  <th>Trạng thái</th>
-                  <th>Thanh toán</th>
-                  <th>Tổng tiền</th>
-                  <th>Thao tác</th>
+            <table className="km-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Mã đơn</th>
+                  <th scope="col" role="columnheader">Khách hàng</th>
+                  <th scope="col" role="columnheader">Ngày đặt</th>
+                  <th scope="col" role="columnheader">Trạng thái</th>
+                  <th scope="col" role="columnheader">Thanh toán</th>
+                  <th scope="col" role="columnheader">Tổng tiền</th>
+                  <th scope="col" role="columnheader">Thao tác</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {result.content.map((order) => (
-                  <tr key={order.id}>
-                    <td>
+                  <tr role="row" key={order.id}>
+                    <td role="cell" data-label="Mã đơn">
                       <strong>{order.orderCode}</strong>
                     </td>
-                    <td>
+                    <td role="cell" data-label="Khách hàng">
                       <div>{order.customerName}</div>
                       <div className="km-field-hint">{order.customerEmail}</div>
                     </td>
-                    <td>{formatDateTime(order.orderDate)}</td>
-                    <td>
+                    <td role="cell" data-label="Ngày đặt">{formatDateTime(order.orderDate)}</td>
+                    <td role="cell" data-label="Trạng thái">
                       <span className={statusBadgeClass(order.status)}>
                         {orderStatusLabels[order.status] || order.status}
                       </span>
                     </td>
-                    <td>
+                    <td role="cell" data-label="Thanh toán">
                       <span className={order.paymentStatus === 'PAID' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
                         {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}
                       </span>
                     </td>
-                    <td>
+                    <td role="cell" data-label="Tổng tiền">
                       <strong>{formatVND(order.totalAmount)}</strong>
                     </td>
-                    <td>
+                    <td role="cell" data-label="Thao tác">
                       <Link
                         to={{ pathname: `/staff/orders/${order.id}`, search: params.toString() }}
                         className="km-btn km-btn-soft km-btn-sm"

@@ -5,16 +5,17 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: var(--space-8) 0;
+  padding: clamp(12px, 5vw, 64px) 0;
 }
 
 .km-auth-card {
   width: 100%;
   max-width: 480px;
   background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-elevated);
-  padding: var(--space-8);
+  padding: clamp(20px, 4vw, 40px);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -28,8 +29,9 @@
 }
 
 .km-auth-title {
-  font-size: 30px;
-  font-weight: 600;
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
   color: var(--color-text);
   margin: 0;
   line-height: 1.2;
@@ -69,8 +71,8 @@
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-subtle);
   color: var(--color-text);
   font-size: var(--text-base);
   outline: none;
@@ -81,6 +83,7 @@
 .km-textarea:focus,
 .km-select:focus {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 
 .km-input--error {
@@ -184,8 +187,9 @@
 }
 
 .km-page-heading {
-  font-size: var(--text-5xl);
-  font-weight: 600;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
   color: var(--color-text);
   margin: 0;
 }
@@ -199,8 +203,9 @@
 
 .km-panel {
   background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: clamp(18px, 3vw, 32px);
   box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;
@@ -218,7 +223,8 @@
   align-items: center;
   gap: var(--space-3);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  min-height: 48px;
   padding: 14px;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -238,10 +244,22 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+.km-checkout-grid > aside {
+  background-color: var(--color-surface-subtle);
+}
+
+@media (min-width: 961px) {
+  .km-checkout-grid > aside {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-6));
+  }
+}
+
 .km-success-card {
   background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-12);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: clamp(20px, 4vw, 48px);
   box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;

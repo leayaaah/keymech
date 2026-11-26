@@ -11,6 +11,36 @@ import { productApi } from '../../api/productApi';
 import { cartApi } from '../../api/cartApi';
 import '../../styles/shop.css';
 
+const SPEC_LABELS = {
+  connectivity: 'Kết nối',
+  keys: 'Số phím',
+  case: 'Chất liệu vỏ',
+  hotSwap: 'Hot-swap',
+  backlight: 'Đèn nền',
+  material: 'Chất liệu',
+  profile: 'Profile',
+};
+
+function readSpecRows(specs) {
+  if (!specs?.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(specs);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return Object.entries(parsed).flatMap(([key, value]) => {
+        if (value == null || value === '') return [];
+        const label = Object.hasOwn(SPEC_LABELS, key) ? SPEC_LABELS[key] : key;
+        if (typeof value === 'boolean') return [[key, label, value ? 'Có' : 'Không']];
+        return [[key, label, typeof value === 'object' ? JSON.stringify(value) : value]];
+      });
+    }
+  } catch {
+    // The API also supports plain text in specs.
+  }
+
+  return [['specs', 'Thông số khác', specs]];
+}
+
 /**
  * Trang chi tiết sản phẩm (Figma frames 3:154 & 3:382).
  * - Sản phẩm bị ẩn / không tồn tại (404) → hiển thị trang 404.
@@ -116,6 +146,7 @@ export function ProductDetailPage() {
   }
 
   const inlineSpecs = [product.layout, product.switchType, product.connection].filter(Boolean);
+  const specRows = readSpecRows(product.specs);
 
   return (
     <div className="km-detail">
@@ -142,7 +173,7 @@ export function ProductDetailPage() {
 
         <div className="km-detail-buy">
           <p className="km-detail-brand">
-            {[product.brand, product.categoryName || 'Bàn phím cơ'].filter(Boolean).join('  /  ')}
+            {[product.brand, product.categoryName].filter(Boolean).join('  /  ')}
           </p>
           <h1 className="km-detail-title">{product.name}</h1>
           {product.descriptionShort && (
@@ -252,12 +283,12 @@ export function ProductDetailPage() {
             <span>{product.switchType}</span>
           </div>
         )}
-        {product.specs && (
-          <div className="km-spec-row">
-            <span className="km-spec-key">Thông số khác</span>
-            <span>{product.specs}</span>
+        {specRows.map(([key, label, value]) => (
+          <div key={key} className="km-spec-row">
+            <span className="km-spec-key">{label}</span>
+            <span>{value}</span>
           </div>
-        )}
+        ))}
       </section>
 
       {/* Sản phẩm liên quan */}

@@ -127,35 +127,35 @@ export function StaffProductsPage() {
         <EmptyState title="Không tìm thấy sản phẩm" />
       ) : (
         <div className="km-table-wrap">
-          <table className="km-table">
-            <thead>
-              <tr>
-                <th>Sản phẩm</th>
-                <th>Thương hiệu</th>
-                <th>Giá bán</th>
-                <th>Tồn kho</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
+          <table className="km-table" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Sản phẩm</th>
+                <th scope="col" role="columnheader">Thương hiệu</th>
+                <th scope="col" role="columnheader">Giá bán</th>
+                <th scope="col" role="columnheader">Tồn kho</th>
+                <th scope="col" role="columnheader">Trạng thái</th>
+                <th scope="col" role="columnheader">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {products.map((p) => (
-                <tr key={p.id}>
-                  <td>
+                <tr role="row" key={p.id}>
+                  <td role="cell" data-label="Sản phẩm">
                     <strong>{p.name}</strong>
                     <div className="km-field-hint">
                       {[p.categoryName, p.layout, p.switchType].filter(Boolean).join(' • ')}
                     </div>
                   </td>
-                  <td>{p.brand}</td>
-                  <td>{formatVND(p.price)}</td>
-                  <td>{p.stockQuantity}</td>
-                  <td>
+                  <td role="cell" data-label="Thương hiệu">{p.brand}</td>
+                  <td role="cell" data-label="Giá bán">{formatVND(p.price)}</td>
+                  <td role="cell" data-label="Tồn kho">{p.stockQuantity}</td>
+                  <td role="cell" data-label="Trạng thái">
                     <span className={p.status === 'ACTIVE' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
                       {p.status === 'ACTIVE' ? 'Đang hiện' : 'Đã ẩn'}
                     </span>
                   </td>
-                  <td>
+                  <td role="cell" data-label="Thao tác">
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <Link to={`/staff/products/${p.id}/edit`} className="km-btn km-btn-soft km-btn-sm">
                         Sửa

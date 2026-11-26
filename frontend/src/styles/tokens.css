@@ -1,24 +1,17 @@
 /* Design Tokens — KeyMech (extracted from Figma Design System & Shop frames) */
 :root {
   /* Colors */
-  --color-navy: #111827;
-  --color-navy-hover: #1f2937;
-  --color-bg: #f3f4f6;
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-subtle: #f9fafb;
+  --color-surface-subtle: #f5f5f7;
 
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-soft: #eff6ff;
+  --color-primary: #0066cc;
+  --color-primary-hover: #0055ad;
+  --color-primary-soft: #eaf3ff;
   --color-primary-tint: #dbeafe;
-  --color-primary-eyebrow: #bfdbfe;
-  --color-primary-light: #60a5fa;
 
-  --color-hero-start: #1e3a8a;
-  --color-hero-end: #3b82f6;
-
-  --color-text: #1f2937;
-  --color-text-muted: #6b7280;
+  --color-text: #1d1d1f;
+  --color-text-muted: #59595e;
   --color-text-on-dark: #ffffff;
   --color-text-on-dark-muted: #d1d5db;
 
@@ -39,7 +32,7 @@
   --text-xs: 12px;
   --text-2xs: 10px;
   --text-sm: 13px;
-  --text-base: 14px;
+  --text-base: 15px;
   --text-md: 15px;
   --text-lg: 16px;
   --text-card-title: 17px;
@@ -48,7 +41,7 @@
   --text-3xl: 28px;
   --text-4xl: 32px;
   --text-5xl: 36px;
-  --text-hero: 48px;
+  --text-hero: clamp(36px, 4.2vw, 58px);
 
   /* Spacing (8px grid) */
   --space-1: 4px;
@@ -65,8 +58,8 @@
   /* Radii */
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   --radius-pill: 9999px;
 
   /* Shadows */
@@ -75,6 +68,6 @@
   --shadow-fab: 0 6px 16px rgba(37, 99, 235, 0.35);
 
   /* Layout */
-  --container-max: 1312px;
+  --container-max: 1280px;
   --header-height: 74px;
 }

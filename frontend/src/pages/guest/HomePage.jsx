@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { productApi } from '../../api/productApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,6 +21,7 @@ const HOME_CATEGORIES = [
  */
 export function HomePage() {
   const { isStaffOrAdmin } = useAuth();
+  const categoryList = useRef(null);
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,16 +56,18 @@ export function HomePage() {
     setReloadKey((k) => k + 1);
   };
 
+  const scrollCategories = (direction) => {
+    const list = categoryList.current;
+    if (list) list.scrollBy({ left: direction * list.clientWidth });
+  };
+
   return (
     <div className="km-home">
       {/* Hero Banner */}
       <section className="km-hero">
         <div className="km-hero-content">
-          <p className="km-hero-eyebrow">DÀNH CHO NGƯỜI YÊU PHÍM CƠ</p>
           <h1 className="km-hero-title">
-            KeyMech – Đam Mê
-            <br />
-            Phím Cơ Đích Thực
+            Tìm cảm giác gõ của riêng bạn
           </h1>
           <p className="km-hero-subtitle">
             Tìm cảm giác gõ của riêng bạn. Bàn phím, switch và linh kiện được tuyển chọn cho mọi góc làm việc.
@@ -85,15 +88,50 @@ export function HomePage() {
             <rect x="2" y="6" width="20" height="12" rx="2" />
             <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" strokeLinecap="round" />
           </svg>
+          {featured[0]?.imageUrl && (
+            <img
+              key={featured[0].imageUrl}
+              src={featured[0].imageUrl}
+              alt=""
+              onError={(event) => { event.currentTarget.hidden = true; }}
+            />
+          )}
         </div>
       </section>
 
       {/* Khám phá danh mục */}
-      <section>
+      <section className="km-home-categories" aria-labelledby="home-categories-title">
         <div className="km-section-header">
-          <h2 className="km-section-title">Bắt đầu từ đam mê của bạn</h2>
+          <h2 className="km-section-title" id="home-categories-title">Danh mục sản phẩm</h2>
+          <div className="km-category-controls">
+            <button
+              type="button"
+              className="km-btn km-btn-ghost"
+              aria-label="Cuộn danh mục sang trái"
+              aria-controls="home-category-list"
+              onClick={() => scrollCategories(-1)}
+            >
+              <span aria-hidden="true">←</span>
+            </button>
+            <button
+              type="button"
+              className="km-btn km-btn-ghost"
+              aria-label="Cuộn danh mục sang phải"
+              aria-controls="home-category-list"
+              onClick={() => scrollCategories(1)}
+            >
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
         </div>
-        <div className="km-category-grid">
+        <div
+          className="km-category-grid"
+          id="home-category-list"
+          ref={categoryList}
+          role="group"
+          aria-label="Danh mục cuộn ngang"
+          tabIndex={0}
+        >
           {HOME_CATEGORIES.map((cat) => (
             <Link key={cat.id} to={`/products?categoryId=${cat.id}`} className="km-category-card">
               <div className="km-category-thumb" aria-hidden="true">

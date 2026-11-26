@@ -39,7 +39,7 @@ export function ProductCard({ product }) {
 
   return (
     <article className="km-product-card">
-      <Link to={`/products/${product.id}`} style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+      <Link to={`/products/${product.id}`} className="km-product-card-link">
         <div className="km-product-card-img">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} />
@@ -50,9 +50,9 @@ export function ProductCard({ product }) {
             </svg>
           )}
         </div>
-        <span className="km-product-card-cat">
-          {product.categoryName || product.category || 'BÀN PHÍM CƠ'}
-        </span>
+        {(product.categoryName || product.category) && (
+          <span className="km-product-card-cat">{product.categoryName || product.category}</span>
+        )}
         <h3 className="km-product-card-title">{product.name}</h3>
         {product.brand && <p className="km-product-card-brand">{product.brand}</p>}
         {specParts.length > 0 && (

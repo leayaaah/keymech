@@ -3,16 +3,17 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: var(--color-bg);
+  background-color: var(--color-surface-subtle);
 }
 
 .km-portal-header {
-  background-color: var(--color-navy);
-  color: var(--color-text-on-dark);
+  background-color: rgb(255 255 255 / 88%);
+  color: var(--color-text);
+  backdrop-filter: blur(18px);
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 2px solid var(--color-primary);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .km-portal-header-inner {
@@ -36,19 +37,19 @@
 .km-portal-nav-link {
   padding: 6px 12px;
   border-radius: var(--radius-md);
-  color: var(--color-text-on-dark-muted);
+  color: var(--color-text-muted);
   font-size: var(--text-base);
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .km-portal-nav-link:hover {
-  color: var(--color-text-on-dark);
-  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  background-color: var(--color-surface-subtle);
 }
 
 .km-portal-nav-link.active {
-  color: var(--color-text-on-dark);
-  background-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--color-primary-soft);
   font-weight: 600;
 }
 
@@ -72,8 +73,9 @@
 }
 
 .km-portal-title {
-  font-size: var(--text-3xl);
-  font-weight: 600;
+  font-size: clamp(29px, 4vw, 44px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
   color: var(--color-text);
   margin: 0;
 }
@@ -87,8 +89,8 @@
 .km-kpi-card {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
@@ -158,6 +160,10 @@
   border-bottom: none;
 }
 
+.km-table tbody tr:hover td {
+  background-color: var(--color-surface-subtle);
+}
+
 .km-btn-danger {
   background-color: var(--color-danger);
   color: var(--color-text-on-dark);
@@ -178,5 +184,53 @@
   }
   .km-portal-header-inner {
     padding: var(--space-3) var(--space-4);
+  }
+  .km-portal-nav {
+    order: 1;
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 4px;
+  }
+  .km-portal-nav-link {
+    flex: none;
+  }
+  .km-table[role="table"],
+  .km-table[role="table"] tbody {
+    display: block;
+  }
+  .km-table[role="table"] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .km-table[role="table"] tbody tr {
+    display: grid;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .km-table[role="table"] tbody tr:last-child {
+    border-bottom: none;
+  }
+  .km-table[role="table"] td {
+    display: grid;
+    grid-template-columns: minmax(88px, 1fr) minmax(0, 2fr);
+    align-items: start;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border: none;
+    overflow-wrap: anywhere;
+  }
+  .km-table[role="table"] td > * {
+    grid-column: 2;
+    min-width: 0;
+  }
+  .km-table[role="table"] td::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
   }
 }

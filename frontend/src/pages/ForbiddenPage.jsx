@@ -8,23 +8,15 @@ export function ForbiddenPage() {
     <div
       role="region"
       aria-label="Không đủ quyền truy cập"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        padding: 'var(--space-8)',
-        textAlign: 'center',
-      }}
+      className="km-error-page"
     >
-      <div style={{ fontSize: '56px', fontWeight: 700, color: 'var(--color-danger)', lineHeight: 1 }}>
+      <div className="km-error-page-code km-error-page-code--forbidden">
         403
       </div>
-      <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 600, color: 'var(--color-text)', margin: 'var(--space-3) 0 var(--space-2)' }}>
+      <h1>
         Bạn không đủ quyền truy cập
       </h1>
-      <p style={{ color: 'var(--color-text-muted)', maxWidth: '460px', margin: '0 0 var(--space-6)', lineHeight: 1.5 }}>
+      <p>
         Tài khoản hiện tại của bạn không có quyền truy cập vào khu vực này.
       </p>
       <Link to="/" className="km-btn km-btn-primary">

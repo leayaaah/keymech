@@ -208,34 +208,34 @@ export default function AdminStaffPage() {
       ) : (
         <>
           <div className="km-table-wrap">
-            <table className="km-table">
-              <thead>
-                <tr>
-                  <th>Họ tên</th>
-                  <th>Email</th>
-                  <th>Vai trò</th>
-                  <th>Trạng thái</th>
-                  <th>Thao tác</th>
+            <table className="km-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Họ tên</th>
+                  <th scope="col" role="columnheader">Email</th>
+                  <th scope="col" role="columnheader">Vai trò</th>
+                  <th scope="col" role="columnheader">Trạng thái</th>
+                  <th scope="col" role="columnheader">Thao tác</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {result.content.map((user) => (
-                  <tr key={user.id}>
-                    <td>
+                  <tr role="row" key={user.id}>
+                    <td role="cell" data-label="Họ tên">
                       <strong>{user.fullName}</strong>
                     </td>
-                    <td>{user.email}</td>
-                    <td>
+                    <td role="cell" data-label="Email">{user.email}</td>
+                    <td role="cell" data-label="Vai trò">
                       <span className={user.role === 'ADMIN' ? 'km-badge km-badge--warning' : 'km-badge km-badge--info'}>
                         {roleLabels[user.role] || user.role}
                       </span>
                     </td>
-                    <td>
+                    <td role="cell" data-label="Trạng thái">
                       <span className={user.enabled ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
                         {user.enabled ? 'Đang hoạt động' : 'Đã ẩn'}
                       </span>
                     </td>
-                    <td>
+                    <td role="cell" data-label="Thao tác">
                       {user.role !== 'ADMIN' ? (
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button

@@ -188,9 +188,13 @@ export function CartPage() {
                   </div>
                 </div>
 
-                <div className="km-text-right">{formatVND(item.price)}</div>
+                <div className="km-text-right">
+                  <span className="km-cart-mobile-label">Đơn giá</span>
+                  {formatVND(item.price)}
+                </div>
 
                 <div className="km-text-center">
+                  <span className="km-cart-mobile-label">Số lượng</span>
                   <div className="km-qty-stepper">
                     <button
                       type="button"
@@ -226,6 +230,7 @@ export function CartPage() {
                 </div>
 
                 <div className="km-text-right" style={{ fontWeight: 600 }}>
+                  <span className="km-cart-mobile-label">Thành tiền</span>
                   {formatVND(item.subtotal)}
                 </div>
               </div>

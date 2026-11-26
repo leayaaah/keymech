@@ -208,21 +208,21 @@ function OrderDetail({ id }) {
 
       {/* Bảng sản phẩm */}
       <div className="km-table-wrap">
-        <table className="km-table">
-          <thead>
-            <tr>
-              <th>Sản phẩm</th>
-              <th>Đơn giá</th>
-              <th>Số lượng</th>
-              <th>Thành tiền</th>
+        <table className="km-table" role="table">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Sản phẩm</th>
+              <th scope="col" role="columnheader">Đơn giá</th>
+              <th scope="col" role="columnheader">Số lượng</th>
+              <th scope="col" role="columnheader">Thành tiền</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {(order.items ?? []).map((item) => (
-              <tr key={item.id}>
-                <td>{item.productName}</td>
-                <td>{formatVND(item.unitPrice)}</td>
-                <td>
+              <tr role="row" key={item.id}>
+                <td role="cell" data-label="Sản phẩm">{item.productName}</td>
+                <td role="cell" data-label="Đơn giá">{formatVND(item.unitPrice)}</td>
+                <td role="cell" data-label="Số lượng">
                   {canEditItems ? (
                     <form
                       key={item.quantity}
@@ -249,7 +249,7 @@ function OrderDetail({ id }) {
                     item.quantity
                   )}
                 </td>
-                <td>
+                <td role="cell" data-label="Thành tiền">
                   <strong>{formatVND(item.lineTotal)}</strong>
                 </td>
               </tr>
