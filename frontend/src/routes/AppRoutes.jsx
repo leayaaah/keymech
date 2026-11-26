@@ -25,6 +25,7 @@ import CheckoutPage from '../pages/customer/CheckoutPage';
 import CustomerOrdersPage from '../pages/customer/CustomerOrdersPage';
 import CustomerOrderDetailPage from '../pages/customer/CustomerOrderDetailPage';
 import CustomerCustomRequestsPage from '../pages/customer/CustomerCustomRequestsPage';
+import CustomerCustomRequestDetailPage from '../pages/customer/CustomerCustomRequestDetailPage';
 import ChangePasswordPage from '../pages/customer/ChangePasswordPage';
 
 // Staff Pages
@@ -77,6 +78,10 @@ export function AppRoutes() {
             <Route
               path="custom-requests"
               element={<CustomerCustomRequestsPage />}
+            />
+            <Route
+              path="custom-requests/:id"
+              element={<CustomerCustomRequestDetailPage />}
             />
             <Route path="change-password" element={<ChangePasswordPage />} />
           </Route>
