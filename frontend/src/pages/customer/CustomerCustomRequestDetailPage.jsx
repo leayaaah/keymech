@@ -91,7 +91,7 @@ export function CustomerCustomRequestDetailPage() {
     if (!req || acting) return;
     setActing(true);
     try {
-      const updated = await customRequestApi.cancel(req.id, {
+      const updated = await customRequestApi.decline(req.id, {
         note: isDecline ? 'Khách từ chối báo giá' : 'Khách hủy yêu cầu Custom',
       });
       setReq(updated);

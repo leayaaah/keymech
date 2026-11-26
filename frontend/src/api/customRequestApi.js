@@ -21,22 +21,22 @@ export const customRequestApi = {
     return axiosClient.get('/custom-requests/my', { params: { page, size } });
   },
 
-  // TODO(backend): GET /api/custom-requests/{id}
+  // TODO(backend): GET /api/custom-requests/my/{id}
   getMine(id) {
     if (USE_MOCK) return customMock.getById(id);
-    return axiosClient.get(`/custom-requests/${encodeURIComponent(id)}`);
+    return axiosClient.get(`/custom-requests/my/${encodeURIComponent(id)}`);
   },
 
-  // TODO(backend): PUT /api/custom-requests/{id}/accept (kèm quotedPrice)
+  // TODO(backend): PUT /api/custom-requests/my/{id}/accept (kèm quotedPrice)
   acceptQuote(id, { quotedPrice }) {
     if (USE_MOCK) return customMock.acceptQuote(id, { quotedPrice });
-    return axiosClient.put(`/custom-requests/${encodeURIComponent(id)}/accept`, { quotedPrice });
+    return axiosClient.put(`/custom-requests/my/${encodeURIComponent(id)}/accept`, { quotedPrice });
   },
 
-  // TODO(backend): PUT /api/custom-requests/{id}/cancel (dùng cho cả hủy và từ chối báo giá -> CANCELLED)
-  cancel(id, { note } = {}) {
-    if (USE_MOCK) return customMock.cancel(id, { note });
-    return axiosClient.put(`/custom-requests/${encodeURIComponent(id)}/cancel`, { note });
+  // TODO(backend): PUT /api/custom-requests/my/{id}/decline (dùng cho cả hủy PENDING và từ chối báo giá QUOTED -> CANCELLED)
+  decline(id, { note } = {}) {
+    if (USE_MOCK) return customMock.decline(id, { note });
+    return axiosClient.put(`/custom-requests/my/${encodeURIComponent(id)}/decline`, { note });
   },
 
   // TODO(backend): GET /api/staff/custom-requests

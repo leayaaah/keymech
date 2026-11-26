@@ -142,7 +142,7 @@ export const customMock = {
     });
     return Promise.resolve({ ...found });
   },
-  cancel(id, { note } = {}) {
+  decline(id, { note } = {}) {
     const found = mockRequests.find((r) => String(r.id) === String(id));
     if (!found) {
       return Promise.reject({ response: { status: 404, data: { message: 'Không tìm thấy yêu cầu Custom.' } } });
