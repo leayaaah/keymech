@@ -1,10 +1,5 @@
 /**
- * Thành phần hiển thị khi tải dữ liệu bị lỗi.
- *
- * @param {Object} props
- * @param {string} [props.title='Đã xảy ra lỗi'] Tiêu đề lỗi
- * @param {string} [props.message='Không thể tải dữ liệu từ máy chủ. Vui lòng thử lại sau.'] Chi tiết lỗi
- * @param {Function} [props.onRetry] Hàm gọi lại khi nhấn nút "Thử lại"
+ * Thành phần hiển thị lỗi tải dữ liệu kèm nút thử lại.
  */
 export function ErrorState({
   title = 'Đã xảy ra lỗi',
@@ -14,18 +9,16 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="error-state"
       style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '3rem 1.5rem',
+        padding: 'var(--space-10) var(--space-6)',
         textAlign: 'center',
-        backgroundColor: '#fef2f2',
-        borderRadius: '8px',
-        border: '1px solid #fecaca',
-        margin: '1.5rem 0',
+        backgroundColor: 'var(--color-surface)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--color-danger-soft)',
       }}
     >
       <div
@@ -33,53 +26,28 @@ export function ErrorState({
         style={{
           width: '56px',
           height: '56px',
-          borderRadius: '50%',
-          backgroundColor: '#fee2e2',
+          borderRadius: 'var(--radius-pill)',
+          backgroundColor: 'var(--color-danger-soft)',
+          color: 'var(--color-danger)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: '1rem',
-          fontSize: '24px',
-          color: '#dc2626',
+          marginBottom: 'var(--space-4)',
         }}
       >
-        ⚠️
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+        </svg>
       </div>
-      <h3
-        style={{
-          fontSize: '1.15rem',
-          fontWeight: 600,
-          color: '#991b1b',
-          marginBottom: '0.5rem',
-        }}
-      >
+      <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600, color: 'var(--color-danger)', margin: '0 0 var(--space-2)' }}>
         {title}
       </h3>
-      <p
-        style={{
-          fontSize: '0.925rem',
-          color: '#b91c1c',
-          maxWidth: '440px',
-          marginBottom: onRetry ? '1.25rem' : 0,
-        }}
-      >
+      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', maxWidth: '440px', margin: onRetry ? '0 0 var(--space-5)' : 0 }}>
         {message}
       </p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          style={{
-            padding: '0.5rem 1.25rem',
-            backgroundColor: '#dc2626',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '0.9rem',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
+        <button type="button" className="km-btn km-btn-primary" onClick={onRetry}>
           Thử lại
         </button>
       )}

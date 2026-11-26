@@ -14,55 +14,22 @@ export function ForbiddenPage() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '60vh',
-        padding: '2rem',
+        padding: 'var(--space-8)',
         textAlign: 'center',
       }}
     >
-      <div
-        aria-hidden="true"
-        style={{
-          fontSize: '3.5rem',
-          marginBottom: '1rem',
-        }}
-      >
-        🚫
+      <div style={{ fontSize: '56px', fontWeight: 700, color: 'var(--color-danger)', lineHeight: 1 }}>
+        403
       </div>
-      <h1
-        style={{
-          fontSize: '1.75rem',
-          fontWeight: 700,
-          color: '#111827',
-          marginBottom: '0.75rem',
-        }}
-      >
-        403 - Bạn không đủ quyền
+      <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 600, color: 'var(--color-text)', margin: 'var(--space-3) 0 var(--space-2)' }}>
+        Bạn không đủ quyền truy cập
       </h1>
-      <p
-        style={{
-          color: '#4b5563',
-          maxWidth: '460px',
-          marginBottom: '1.5rem',
-          lineHeight: 1.5,
-        }}
-      >
+      <p style={{ color: 'var(--color-text-muted)', maxWidth: '460px', margin: '0 0 var(--space-6)', lineHeight: 1.5 }}>
         Tài khoản hiện tại của bạn không có quyền truy cập vào khu vực này.
-        Vui lòng liên hệ quản trị viên hoặc quay lại trang chủ.
       </p>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link
-          to="/"
-          style={{
-            padding: '0.6rem 1.25rem',
-            backgroundColor: '#2563eb',
-            color: '#ffffff',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            fontWeight: 500,
-          }}
-        >
-          Về trang chủ
-        </Link>
-      </div>
+      <Link to="/" className="km-btn km-btn-primary">
+        Về trang chủ
+      </Link>
     </div>
   );
 }
