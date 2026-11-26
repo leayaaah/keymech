@@ -1,222 +1,171 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import formatVND from '../../utils/formatVND';
+import { productApi } from '../../api/productApi';
+import { useAuth } from '../../hooks/useAuth';
+import ProductCard from '../../components/ProductCard';
+import Loading from '../../components/Loading';
+import ErrorState from '../../components/ErrorState';
+import EmptyState from '../../components/EmptyState';
+import { toast } from '../../utils/toast';
+import '../../styles/shop.css';
+
+const HOME_CATEGORIES = [
+  { id: '1', name: 'Bàn phím cơ' },
+  { id: '2', name: 'Switch' },
+  { id: '3', name: 'Keycap' },
+  { id: '4', name: 'Dụng cụ và phụ kiện' },
+  { id: '5', name: 'Kit bàn phím' },
+];
 
 /**
- * Trang chủ giới thiệu sản phẩm và dịch vụ Custom bàn phím KeyMech.
+ * Trang chủ cửa hàng KeyMech (Figma frame 3:110).
  */
 export function HomePage() {
-  const sampleProducts = [
-    {
-      id: 1,
-      name: 'Bàn phím cơ Keychron Q1 Pro Wireless',
-      price: 4390000,
-      image: '/uploads/sample1.jpg',
-      category: 'Bàn phím cơ',
-    },
-    {
-      id: 2,
-      name: 'Switch Gateron Oil King Tuyển chọn (Pack 35)',
-      price: 450000,
-      image: '/uploads/sample2.jpg',
-      category: 'Switch',
-    },
-    {
-      id: 3,
-      name: 'Bộ Keycap PBT Dyesub Cherry Profile Retro',
-      price: 850000,
-      image: '/uploads/sample3.jpg',
-      category: 'Keycap',
-    },
-  ];
+  const { isStaffOrAdmin } = useAuth();
+  const [featured, setFeatured] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    productApi
+      .list({ page: 0, size: 4 })
+      .then((res) => {
+        if (active) {
+          setFeatured(res?.content ?? []);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err?.response?.data?.message || 'Không thể tải sản phẩm nổi bật.');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setReloadKey((k) => k + 1);
+  };
 
   return (
-    <div>
+    <div className="km-home">
       {/* Hero Banner */}
-      <section
-        style={{
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-          color: '#ffffff',
-          borderRadius: '12px',
-          padding: '3rem 2rem',
-          textAlign: 'center',
-          marginBottom: '2.5rem',
-        }}
-      >
-        <h1
-          style={{
-            fontSize: '2.25rem',
-            fontWeight: 800,
-            marginBottom: '1rem',
-          }}
-        >
-          KeyMech – Đam Mê Phím Cơ Đích Thực
-        </h1>
-        <p
-          style={{
-            fontSize: '1.1rem',
-            maxWidth: '600px',
-            margin: '0 auto 1.5rem auto',
-            opacity: 0.9,
-          }}
-        >
-          Cung cấp linh kiện phím cơ chính hãng, kit bàn phím cao cấp và dịch vụ
-          custom phím độc bản theo ý thích.
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-          <Link
-            to="/products"
-            style={{
-              backgroundColor: '#ffffff',
-              color: '#1e3a8a',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: 600,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            Khám phá sản phẩm
-          </Link>
-          <Link
-            to="/customer/custom-requests"
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              color: '#ffffff',
-              border: '1px solid #ffffff',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
-            Đặt Custom phím
-          </Link>
+      <section className="km-hero">
+        <div className="km-hero-content">
+          <p className="km-hero-eyebrow">DÀNH CHO NGƯỜI YÊU PHÍM CƠ</p>
+          <h1 className="km-hero-title">
+            KeyMech – Đam Mê
+            <br />
+            Phím Cơ Đích Thực
+          </h1>
+          <p className="km-hero-subtitle">
+            Tìm cảm giác gõ của riêng bạn. Bàn phím, switch và linh kiện được tuyển chọn cho mọi góc làm việc.
+          </p>
+          <div className="km-hero-actions">
+            <Link to="/products" className="km-btn km-btn-primary">
+              Khám phá sản phẩm
+            </Link>
+            {!isStaffOrAdmin && (
+              <Link to="/customer/custom-requests" className="km-btn km-btn-soft">
+                Đặt Custom phím
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="km-hero-visual" aria-hidden="true">
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <rect x="2" y="6" width="20" height="12" rx="2" />
+            <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" strokeLinecap="round" />
+          </svg>
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* Khám phá danh mục */}
       <section>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              color: '#111827',
-              margin: 0,
-            }}
-          >
-            Sản phẩm nổi bật
-          </h2>
-          <Link
-            to="/products"
-            style={{
-              color: '#2563eb',
-              textDecoration: 'none',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-            }}
-          >
+        <div className="km-section-header">
+          <h2 className="km-section-title">Bắt đầu từ đam mê của bạn</h2>
+        </div>
+        <div className="km-category-grid">
+          {HOME_CATEGORIES.map((cat) => (
+            <Link key={cat.id} to={`/products?categoryId=${cat.id}`} className="km-category-card">
+              <div className="km-category-thumb" aria-hidden="true">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <rect x="3" y="6" width="18" height="12" rx="2" />
+                  <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" strokeLinecap="round" />
+                </svg>
+              </div>
+              <p className="km-category-name">{cat.name}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Sản phẩm nổi bật */}
+      <section>
+        <div className="km-section-header">
+          <h2 className="km-section-title">Sản phẩm nổi bật</h2>
+          <Link to="/products" className="km-section-link">
             Xem tất cả →
           </Link>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '1.5rem',
-          }}
-        >
-          {sampleProducts.map((p) => (
-            <div
-              key={p.id}
-              style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <div
-                style={{
-                  height: '180px',
-                  backgroundColor: '#e5e7eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#9ca3af',
-                  fontSize: '2rem',
-                }}
-              >
-                ⌨️
-              </div>
-              <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                  }}
-                >
-                  {p.category}
-                </span>
-                <h3
-                  style={{
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    margin: '0.35rem 0 0.5rem 0',
-                    color: '#1f2937',
-                  }}
-                >
-                  {p.name}
-                </h3>
-                <div
-                  style={{
-                    marginTop: 'auto',
-                    paddingTop: '0.5rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 700,
-                      color: '#dc2626',
-                    }}
-                  >
-                    {formatVND(p.price)}
-                  </span>
-                  <Link
-                    to={`/products/${p.id}`}
-                    style={{
-                      padding: '0.4rem 0.8rem',
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
-                      borderRadius: '6px',
-                      textDecoration: 'none',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    Xem chi tiết
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {loading && <Loading message="Đang tải sản phẩm nổi bật..." />}
+        {!loading && error && (
+          <ErrorState title="Lỗi tải sản phẩm" message={error} onRetry={handleRetry} />
+        )}
+        {!loading && !error && featured.length === 0 && (
+          <EmptyState
+            title="Không tìm thấy sản phẩm"
+            description="Hiện chưa có sản phẩm nổi bật nào."
+          />
+        )}
+        {!loading && !error && featured.length > 0 && (
+          <div className="km-product-grid-4">
+            {featured.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
+
+      {/* Custom Banner (ẩn với Staff/Admin) */}
+      {!isStaffOrAdmin && (
+        <section className="km-custom-banner">
+          <div className="km-custom-banner-inner">
+            <h2>Một chiếc phím. Chất riêng của bạn.</h2>
+            <p>
+              Tự chọn layout, switch, case và keycap. Đội ngũ KeyMech đồng hành từ ý tưởng đến lần chạm phím đầu tiên.
+            </p>
+            <Link to="/customer/custom-requests" className="km-btn km-btn-primary">
+              Tạo yêu cầu Custom
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Trợ lý mua sắm AI (ẩn với Staff/Admin) */}
+      {!isStaffOrAdmin && (
+        <section className="km-assistant-banner">
+          <h2>Chưa biết chọn gì? Hỏi KeyMech.</h2>
+          <p>AI tư vấn giúp bạn tìm bàn phím và switch phù hợp với nhu cầu, ngân sách.</p>
+          <button
+            type="button"
+            className="km-btn km-btn-primary"
+            onClick={() => toast.info('Tính năng Chatbot tư vấn sẽ được mở ở Lô 6.')}
+          >
+            Tư vấn ngay
+          </button>
+        </section>
+      )}
     </div>
   );
 }
