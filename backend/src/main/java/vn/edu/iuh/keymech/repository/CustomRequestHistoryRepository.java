@@ -6,4 +6,5 @@ import vn.edu.iuh.keymech.model.CustomRequestHistory;
 
 public interface CustomRequestHistoryRepository extends JpaRepository<CustomRequestHistory, Long> {
     List<CustomRequestHistory> findByCustomRequestIdOrderByChangedAtAsc(Long customRequestId);
+    List<CustomRequestHistory> findByCustomRequestIdOrderByChangedAtDescIdDesc(Long customRequestId);
 }

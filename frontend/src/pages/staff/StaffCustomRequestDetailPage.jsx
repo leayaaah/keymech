@@ -58,7 +58,7 @@ export function StaffCustomRequestDetailPage() {
   const handleSendQuote = async (e) => {
     e.preventDefault();
     const priceNum = Number(quotedPrice);
-    if (!quotedPrice || Number.isNaN(priceNum) || priceNum <= 0) {
+    if (!Number.isInteger(priceNum) || priceNum <= 0) {
       toast.error('Vui lòng nhập giá báo hợp lệ (> 0).');
       return;
     }
@@ -69,7 +69,7 @@ export function StaffCustomRequestDetailPage() {
         quoteNote: quoteNote.trim(),
       });
       setReq(updated);
-      toast.success('Đã gửi báo giá cho khách hàng.');
+      toast.success(req.status === 'PENDING' ? 'Đã lưu báo giá.' : 'Đã cập nhật báo giá cho khách hàng.');
     } catch (err) {
       toast.error(getFeatureErrorMessage(err, 'Không thể gửi báo giá.'));
     } finally {
@@ -124,8 +124,7 @@ export function StaffCustomRequestDetailPage() {
         <div>
           <h1 className="km-portal-title">{req.requestCode || `CUS-${req.id}`}</h1>
           <p className="km-auth-subtitle">
-            Khách hàng: {req.customerName} • {req.customerEmail}
-            {req.customerPhone ? ` • ${req.customerPhone}` : ''}
+            Mã khách hàng #{req.customerId}
           </p>
         </div>
         <span className="km-badge km-badge--info">
@@ -138,7 +137,7 @@ export function StaffCustomRequestDetailPage() {
           <h2 style={{ fontSize: 'var(--text-xl)' }}>Cấu hình yêu cầu</h2>
           <div>Layout: {req.layout}</div>
           <div>
-            Switch: {req.switchType} • {req.switchName}
+            Switch: {[req.switchType, req.switchName].filter(Boolean).join(' • ')}
           </div>
           {req.caseMaterial && <div>Case: {req.caseMaterial}</div>}
           {req.keycapSet && <div>Keycap: {req.keycapSet}</div>}
@@ -149,7 +148,7 @@ export function StaffCustomRequestDetailPage() {
           {req.budget != null && <div>Ngân sách dự kiến: {formatVND(req.budget)}</div>}
           {req.quotedPrice != null && (
             <div style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
-              Giá đã báo: {formatVND(req.quotedPrice)}
+              {req.status === 'PENDING' ? 'Giá đã lưu' : 'Giá đã báo'}: {formatVND(req.quotedPrice)}
             </div>
           )}
           {req.note && <p className="km-field-hint">Ghi chú khách: {req.note}</p>}
@@ -191,7 +190,7 @@ export function StaffCustomRequestDetailPage() {
                 id="staff-quote-price"
                 type="number"
                 min={1}
-                step={10000}
+                step={1}
                 className="km-input"
                 value={quotedPrice}
                 onChange={(e) => setQuotedPrice(e.target.value)}
@@ -205,16 +204,28 @@ export function StaffCustomRequestDetailPage() {
               <textarea
                 id="staff-quote-note"
                 rows={3}
+                maxLength={500}
                 className="km-textarea"
                 value={quoteNote}
                 onChange={(e) => setQuoteNote(e.target.value)}
                 placeholder="Chi tiết linh kiện, công lắp ráp, thời gian dự kiến..."
               />
             </div>
-            <div>
+            <div className="km-action-row">
               <button type="submit" className="km-btn km-btn-primary" disabled={busy}>
-                {busy ? 'Đang gửi...' : 'Gửi báo giá'}
+                {req.status === 'PENDING' ? 'Lưu báo giá' : 'Cập nhật báo giá'}
               </button>
+              {req.status === 'PENDING' && (
+                <button
+                  type="button"
+                  className="km-btn km-btn-primary"
+                  disabled={busy || req.quotedPrice == null || Number(quotedPrice) !== Number(req.quotedPrice)
+                    || quoteNote.trim() !== (req.quoteNote ?? '')}
+                  onClick={() => handleTransition('QUOTED', '')}
+                >
+                  Gửi báo giá
+                </button>
+              )}
             </div>
           </form>
 
@@ -228,6 +239,7 @@ export function StaffCustomRequestDetailPage() {
                 <textarea
                   id="staff-reject-note"
                   rows={3}
+                  maxLength={500}
                   className="km-textarea"
                   value={rejectNote}
                   onChange={(e) => setRejectNote(e.target.value)}
@@ -250,22 +262,23 @@ export function StaffCustomRequestDetailPage() {
       )}
 
       {/* Chuyển trạng thái lắp ráp */}
-      {(req.status === 'ACCEPTED' || req.status === 'IN_PROGRESS') && (
+      {['PENDING', 'QUOTED', 'ACCEPTED', 'IN_PROGRESS'].includes(req.status) && (
         <div className="km-panel" style={{ padding: 'var(--space-6)' }}>
-          <h2 style={{ fontSize: 'var(--text-xl)' }}>Cập nhật tiến độ lắp ráp</h2>
+          <h2 style={{ fontSize: 'var(--text-xl)' }}>Cập nhật yêu cầu</h2>
           <div className="km-field">
             <label htmlFor="staff-progress-note" className="km-label">
               Ghi chú tiến độ
             </label>
             <input
               id="staff-progress-note"
+              maxLength={500}
               className="km-input"
               value={statusNote}
               onChange={(e) => setStatusNote(e.target.value)}
               placeholder="Ghi chú tùy chọn..."
             />
           </div>
-          <div>
+          <div className="km-action-row">
             {req.status === 'ACCEPTED' && (
               <button
                 type="button"
@@ -286,6 +299,14 @@ export function StaffCustomRequestDetailPage() {
                 Hoàn thành lắp ráp
               </button>
             )}
+            <button
+              type="button"
+              className="km-btn km-btn-danger"
+              disabled={busy}
+              onClick={() => handleTransition('CANCELLED', statusNote)}
+            >
+              Hủy yêu cầu
+            </button>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
+import PageNavigation from '../../components/PageNavigation';
 import formatVND from '../../utils/formatVND';
 import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
@@ -20,6 +21,8 @@ export function StaffProductsPage() {
   const [keyword, setKeyword] = useState('');
   const [appliedKw, setAppliedKw] = useState('');
   const [products, setProducts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -28,10 +31,11 @@ export function StaffProductsPage() {
   useEffect(() => {
     let active = true;
     staffProductApi
-      .list({ keyword: appliedKw || undefined, page: 0, size: 20 })
+      .list({ keyword: appliedKw || undefined, page, size: 20 })
       .then((res) => {
         if (active) {
           setProducts(res?.content ?? []);
+          setTotalPages(res?.totalPages ?? 0);
           setError('');
         }
       })
@@ -46,7 +50,7 @@ export function StaffProductsPage() {
     return () => {
       active = false;
     };
-  }, [appliedKw, reloadKey]);
+  }, [appliedKw, page, reloadKey]);
 
   const handleToggleVisibility = async (product) => {
     if (!isAdmin || togglingId) return;
@@ -89,7 +93,9 @@ export function StaffProductsPage() {
         className="km-filter-bar"
         onSubmit={(e) => {
           e.preventDefault();
+          if (page === 0 && appliedKw === keyword.trim()) return;
           setLoading(true);
+          setPage(0);
           setAppliedKw(keyword.trim());
         }}
       >
@@ -177,6 +183,14 @@ export function StaffProductsPage() {
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && !error && (
+        <PageNavigation page={page} totalPages={totalPages} label="Phân trang sản phẩm"
+          onChange={(next) => {
+            setLoading(true);
+            setPage(next);
+          }}
+        />
       )}
     </>
   );

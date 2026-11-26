@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import staffProductApi from '../../api/staffProductApi';
+import { productApi } from '../../api/productApi';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
 import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/portal.css';
-
-const CATEGORIES = [
-  { id: 1, name: 'Bàn phím cơ' },
-  { id: 2, name: 'Switch' },
-  { id: 3, name: 'Keycap' },
-  { id: 4, name: 'Dụng cụ và phụ kiện' },
-  { id: 5, name: 'Kit bàn phím' },
-];
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
@@ -42,7 +35,7 @@ export function StaffProductFormPage() {
   const [form, setForm] = useState({
     name: '',
     brand: '',
-    categoryId: '1',
+    categoryId: '',
     layout: '75%',
     switchType: 'Linear',
     price: '',
@@ -51,22 +44,27 @@ export function StaffProductFormPage() {
     specs: '',
   });
   const [imageFile, setImageFile] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!isEdit) return;
     let active = true;
-    staffProductApi
-      .detail(id)
-      .then((data) => {
+    Promise.all([productApi.listCategories(), isEdit ? staffProductApi.detail(id) : null])
+      .then(([available, data]) => {
         if (!active) return;
+        setCategories(available);
+        setLoadError('');
+        if (!data) return;
         setForm({
           name: data?.name || '',
           brand: data?.brand || '',
-          categoryId: String(data?.categoryId || 1),
+          categoryId: available.some((category) => category.id === data.categoryId)
+            ? String(data.categoryId)
+            : '',
           layout: data?.layout || '',
           switchType: data?.switchType || '',
           price: data?.price != null ? String(data.price) : '',
@@ -84,12 +82,13 @@ export function StaffProductFormPage() {
     return () => {
       active = false;
     };
-  }, [id, isEdit]);
+  }, [id, isEdit, reloadKey]);
 
   const validate = () => {
     const next = {};
     if (!form.name.trim()) next.name = 'Vui lòng nhập tên sản phẩm.';
     if (!form.brand.trim()) next.brand = 'Vui lòng nhập thương hiệu.';
+    if (!form.categoryId) next.category = 'Vui lòng chọn danh mục đang hiển thị.';
     const priceNum = Number(form.price);
     if (!form.price || Number.isNaN(priceNum) || priceNum <= 0) {
       next.price = 'Giá bán phải lớn hơn 0.';
@@ -140,7 +139,12 @@ export function StaffProductFormPage() {
   };
 
   if (loading) return <Loading message="Đang tải sản phẩm..." />;
-  if (loadError) return <ErrorState title="Lỗi tải sản phẩm" message={loadError} />;
+  if (loadError) return (
+    <ErrorState title="Lỗi tải sản phẩm hoặc danh mục" message={loadError} onRetry={() => {
+      setLoading(true);
+      setReloadKey((key) => key + 1);
+    }} />
+  );
 
   return (
     <>
@@ -189,12 +193,14 @@ export function StaffProductFormPage() {
               value={form.categoryId}
               onChange={(e) => setForm((p) => ({ ...p, categoryId: e.target.value }))}
             >
-              {CATEGORIES.map((c) => (
+              <option value="">Chọn danh mục</option>
+              {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
+            {errors.category && <p className="km-field-error">{errors.category}</p>}
           </div>
 
           <div className="km-field">

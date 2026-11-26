@@ -10,14 +10,6 @@ import '../../styles/shop.css';
 
 const PAGE_SIZE = 12;
 
-const CATEGORIES = [
-  { id: '1', name: 'Bàn phím cơ' },
-  { id: '2', name: 'Switch' },
-  { id: '3', name: 'Keycap' },
-  { id: '4', name: 'Dụng cụ và phụ kiện' },
-  { id: '5', name: 'Kit bàn phím' },
-];
-
 const BRANDS = [
   'Keychron',
   'Akko',
@@ -32,12 +24,12 @@ const BRANDS = [
 
 const LAYOUTS = ['60%', '65%', '75%', 'TKL', 'Fullsize'];
 const FILTER_KEYS = ['keyword', 'categoryId', 'brand', 'layout', 'minPrice', 'maxPrice', 'sort'];
-const supportsLayout = (categoryId) => !categoryId || categoryId === '1' || categoryId === '5';
+const ACCESSORY_CATEGORIES = new Set(['switch', 'keycap', 'dung-cu-phu-kien']);
+const supportsLayout = (category) => !ACCESSORY_CATEGORIES.has(category?.slug);
 const validPrice = (value) => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0);
 
 function readFilters(searchParams) {
   const filters = Object.fromEntries(FILTER_KEYS.map((key) => [key, searchParams.get(key) || '']));
-  if (!supportsLayout(filters.categoryId)) filters.layout = '';
   if (filters.layout === 'Full-size') filters.layout = 'Fullsize';
   return filters;
 }
@@ -77,12 +69,32 @@ export function ProductListPage() {
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [categoryError, setCategoryError] = useState(false);
+  const selectedCategory = categories.find(({ id }) => id === categoryId);
+  const layoutAvailable = supportsLayout(selectedCategory);
+
+  useEffect(() => {
+    let active = true;
+    productApi.listCategories()
+      .then((data) => {
+        if (active) {
+          setCategories(data.map((category) => ({ ...category, id: String(category.id) })));
+          setCategoryError(false);
+        }
+      })
+      .catch(() => {
+        if (active) setCategoryError(true);
+      });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
 
     const params = { page, size: PAGE_SIZE };
     for (const [key, value] of Object.entries(readFilters(new URLSearchParams(query)))) {
+      if (key === 'layout' && !layoutAvailable) continue;
       if (value) params[key] = value;
     }
 
@@ -108,7 +120,7 @@ export function ProductListPage() {
     return () => {
       ignore = true;
     };
-  }, [page, query, reloadKey]);
+  }, [layoutAvailable, page, query, reloadKey]);
 
   const loading = loadedQuery?.query !== query || loadedQuery?.reloadKey !== reloadKey;
 
@@ -117,7 +129,7 @@ export function ProductListPage() {
     for (const key of FILTER_KEYS) {
       if (filters[key]) next.set(key, filters[key]);
     }
-    if (!supportsLayout(filters.categoryId)) next.delete('layout');
+    if (!supportsLayout(categories.find(({ id }) => id === filters.categoryId))) next.delete('layout');
     if (nextPage > 0) next.set('page', String(nextPage));
     setDraft(draftOverrides ? { query: next.toString(), keyword, minPrice, maxPrice, ...draftOverrides } : null);
     setPriceError(null);
@@ -150,7 +162,7 @@ export function ProductListPage() {
 
   const chips = [
     ['keyword', applied.keyword],
-    ['categoryId', CATEGORIES.find(({ id }) => id === categoryId)?.name],
+    ['categoryId', selectedCategory?.name],
     ['brand', brand],
     ['layout', layout === 'Fullsize' ? 'Full-size' : layout],
     ['minPrice', applied.minPrice && `Từ ${formatVND(Number(applied.minPrice))}`],
@@ -229,7 +241,8 @@ export function ProductListPage() {
 
           <div className="km-filter-group">
             <span className="km-filter-group-label">Danh mục</span>
-            {[{ id: '', name: 'Tất cả' }, ...CATEGORIES].map((c) => (
+            {categoryError && <p className="km-field-error">Không thể tải danh mục.</p>}
+            {[{ id: '', name: 'Tất cả' }, ...categories].map((c) => (
               <label key={c.id} className="km-filter-option">
                 <input
                   type="radio"
@@ -261,7 +274,7 @@ export function ProductListPage() {
             </select>
           </div>
 
-          {supportsLayout(categoryId) && (
+          {layoutAvailable && (
             <div className="km-filter-group">
               <span className="km-filter-group-label">Layout</span>
               <div className="km-filter-layout-grid">

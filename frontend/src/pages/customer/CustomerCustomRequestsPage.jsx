@@ -5,6 +5,7 @@ import customRequestApi from '../../api/customRequestApi';
 import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
+import PageNavigation from '../../components/PageNavigation';
 import formatVND from '../../utils/formatVND';
 import { formatDate } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
@@ -38,6 +39,8 @@ export function CustomerCustomRequestsPage() {
 
   const [tab, setTab] = useState('list');
   const [requests, setRequests] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -62,10 +65,11 @@ export function CustomerCustomRequestsPage() {
     if (tab !== 'list') return;
     let active = true;
     customRequestApi
-      .listMine()
+      .listMine(page)
       .then((res) => {
         if (active) {
           setRequests(res?.content ?? []);
+          setTotalPages(res?.totalPages ?? 0);
           setError('');
         }
       })
@@ -80,13 +84,14 @@ export function CustomerCustomRequestsPage() {
     return () => {
       active = false;
     };
-  }, [tab, reloadKey]);
+  }, [tab, page, reloadKey]);
 
   const validateForm = () => {
     const next = {};
     if (!form.layout) next.layout = 'Vui lòng chọn layout.';
     if (!form.switchType) next.switchType = 'Vui lòng chọn loại switch.';
     if (!form.switchName.trim()) next.switchName = 'Vui lòng nhập tên switch mong muốn.';
+    else if (form.switchName.trim().length > 70) next.switchName = 'Tên switch tối đa 70 ký tự.';
 
     if (form.budget !== '') {
       const budgetNum = Number(form.budget);
@@ -110,7 +115,7 @@ export function CustomerCustomRequestsPage() {
     setSubmitting(true);
     try {
       const created = await customRequestApi.create({
-        layout: form.layout,
+        layout: form.layout === 'Full-size' ? 'Fullsize' : form.layout,
         switchType: form.switchType,
         switchName: form.switchName.trim(),
         caseMaterial: form.caseMaterial,
@@ -383,7 +388,7 @@ export function CustomerCustomRequestsPage() {
                     {req.requestCode || `CUS-${req.id}`}
                   </div>
                   <div className="km-field-hint">
-                    Ngày gửi: {formatDate(req.createdAt)} • {req.layout} • {req.switchType} ({req.switchName})
+                    Ngày gửi: {formatDate(req.createdAt)} • {[req.layout, req.switchType, req.switchName].filter(Boolean).join(' • ')}
                   </div>
                 </div>
                 <span className={customBadgeClass(req.status)}>
@@ -405,6 +410,12 @@ export function CustomerCustomRequestsPage() {
               </div>
             </article>
           ))}
+          <PageNavigation page={page} totalPages={totalPages} label="Phân trang yêu cầu của tôi"
+            onChange={(next) => {
+              setLoading(true);
+              setPage(next);
+            }}
+          />
         </div>
       )}
     </>

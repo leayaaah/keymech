@@ -225,6 +225,7 @@ Tất cả API nằm dưới `/api`, trao đổi JSON UTF-8. Ký hiệu quyền:
 | Staff | `PUT /api/staff/orders/{id}/status` | Đổi trạng thái đơn (hủy thì hoàn tồn kho) | S |
 | Staff | `PUT /api/staff/orders/{id}/payment` | Cập nhật `payment_status` | S |
 | Staff | `GET /api/staff/custom-requests` | Danh sách yêu cầu Custom, lọc theo `status` | S |
+| Staff | `GET /api/staff/custom-requests/{id}` | Chi tiết và lịch sử yêu cầu cho màn hình xử lý Custom | S |
 | Staff | `PUT /api/staff/custom-requests/{id}/quote` | Nhập báo giá | S |
 | Staff | `PUT /api/staff/custom-requests/{id}/status` | Chuyển trạng thái tiến độ (trừ bước khách đồng ý) | S |
 | Admin | `PUT /api/admin/products/{id}/visibility` | Ẩn hoặc hiện sản phẩm (`status`) | A |
@@ -237,6 +238,8 @@ Tất cả API nằm dưới `/api`, trao đổi JSON UTF-8. Ký hiệu quyền:
 | Admin | `PUT /api/admin/users/{id}/visibility` | Ẩn hoặc hiện người dùng (`enabled`); tài khoản đích là Admin thì 403 | A |
 | Admin | `GET /api/admin/dashboard` | Số liệu thống kê, viết bằng `@Query` ở Repository | A |
 | Admin | `POST /api/admin/chatbot/reindex` | Dựng lại chỉ mục vector từ sản phẩm đang hiện và file kiến thức; trả số tài liệu đã nhúng | A |
+
+Dashboard tính số đơn và doanh thu theo ngày đặt đơn, dùng ngày và tháng hiện tại của máy chủ. Chỉ cộng doanh thu của đơn `PAID` còn hiệu lực. Số người dùng mới dựa trên ngày tạo tài khoản. Số yêu cầu Custom trả đủ các trạng thái, kể cả khi số lượng bằng 0.
 
 Sự kiện tracking do server ghi khi xử lý `GET /api/products/{id}`, `GET /api/products` (khi có `keyword`), `POST /api/cart/items` và `POST /api/orders/checkout`. Không có endpoint nhận sự kiện từ client nên không ai gửi được sự kiện giả.
 
@@ -393,6 +396,8 @@ Sơ đồ State cần ghi thêm người thực hiện trên từng mũi tên th
 Bước nhảy cóc (ví dụ `PENDING` sang `IN_PROGRESS`) trả 409 `INVALID_TRANSITION`; người không có quyền với bước đó trả 403.
 
 **Báo giá:** `PUT /api/staff/custom-requests/{id}/quote` chỉ chấp nhận khi yêu cầu đang `PENDING` hoặc `QUOTED`, giá phải lớn hơn 0; báo giá mới thay báo giá cũ và không tự đổi trạng thái. Muốn sang `QUOTED` phải gọi tiếp endpoint chuyển trạng thái. Khi yêu cầu đang `QUOTED` mà Staff báo lại giá, khách phải đồng ý đúng giá mới (kiểm tra `quotedPrice` ở `accept`).
+
+Màn hình Staff lưu giá và ghi chú qua `/quote`, sau đó gửi cho khách qua `/status` với `QUOTED`. Ghi chú báo giá được lưu vào lịch sử với trạng thái trước và sau giống nhau. Timeline hiển thị những lần chuyển trạng thái.
 
 **Bảng chuyển hợp lệ trong code** (không dùng Check hay Trigger):
 
