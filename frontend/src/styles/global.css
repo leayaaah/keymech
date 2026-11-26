@@ -1,0 +1,423 @@
+/* Global & Shared Layout Styles — KeyMech */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-width: 360px;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Shell */
+.km-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.km-main {
+  flex: 1;
+  width: 100%;
+  max-width: calc(var(--container-max) + var(--space-8) * 2);
+  margin: 0 auto;
+  padding: var(--space-8);
+}
+
+/* Header */
+.km-header {
+  background-color: var(--color-navy);
+  color: var(--color-text-on-dark);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  min-height: var(--header-height);
+  display: flex;
+  align-items: center;
+}
+
+.km-header-inner {
+  width: 100%;
+  max-width: calc(var(--container-max) + var(--space-8) * 2);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-8);
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.km-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text-on-dark);
+  white-space: nowrap;
+}
+
+.km-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.km-nav-link {
+  color: var(--color-text-on-dark-muted);
+  font-size: var(--text-base);
+  font-weight: 400;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.km-nav-link:hover,
+.km-nav-link.active {
+  color: var(--color-text-on-dark);
+}
+
+.km-nav-link--accent {
+  color: var(--color-primary-light);
+  font-weight: 600;
+}
+
+.km-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-left: auto;
+}
+
+.km-cart-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--color-text-on-dark);
+  border-radius: var(--radius-md);
+}
+
+.km-cart-btn:hover {
+  background-color: var(--color-navy-hover);
+}
+
+.km-cart-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-text-on-dark);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.km-auth-links {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text-on-dark);
+  white-space: nowrap;
+}
+
+.km-auth-sep {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.km-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.km-user-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text-on-dark);
+}
+
+.km-logout-btn {
+  background-color: var(--color-navy-hover);
+  color: var(--color-text-on-dark);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.km-logout-btn:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Footer */
+.km-footer {
+  background-color: var(--color-navy);
+  color: var(--color-text-on-dark-muted);
+  margin-top: auto;
+}
+
+.km-footer-inner {
+  max-width: calc(var(--container-max) + var(--space-8) * 2);
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.km-footer-brand {
+  color: var(--color-text-on-dark);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.km-footer-col-title {
+  color: var(--color-text-on-dark);
+  font-weight: 600;
+  margin: 0 0 var(--space-1) 0;
+}
+
+.km-footer-col-text {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text-on-dark-muted);
+}
+
+/* Floating Chatbot Button */
+.km-chat-fab {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 90;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-text-on-dark);
+  border: none;
+  box-shadow: var(--shadow-fab);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.km-chat-fab:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
+}
+
+/* Buttons */
+.km-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 18px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.km-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.km-btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-dark);
+}
+
+.km-btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.km-btn-soft {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.km-btn-soft:hover:not(:disabled) {
+  background-color: var(--color-primary-tint);
+}
+
+.km-btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-muted);
+}
+
+.km-btn-ghost:hover:not(:disabled) {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.km-btn-full {
+  width: 100%;
+}
+
+/* Cards & Breadcrumbs */
+.km-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+}
+
+.km-breadcrumb {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.km-breadcrumb a:hover {
+  color: var(--color-primary);
+}
+
+/* Product Card */
+.km-product-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.km-product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.km-product-card-img {
+  height: 180px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.km-product-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.km-product-card-cat {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.km-product-card-title {
+  font-size: var(--text-card-title);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.km-product-card-brand {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.km-product-card-specs {
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.km-product-card-specs--out {
+  color: var(--color-danger);
+}
+
+.km-product-card-price {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: auto;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .km-main {
+    padding: var(--space-4);
+  }
+  .km-header-inner {
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+  }
+  .km-footer-inner {
+    grid-template-columns: 1fr;
+    padding: var(--space-8) var(--space-4);
+  }
+}
