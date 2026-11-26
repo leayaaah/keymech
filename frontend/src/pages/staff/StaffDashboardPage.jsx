@@ -1,114 +1,65 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import '../../styles/portal.css';
 
 /**
- * Trang tổng quan dành cho Nhân viên (Staff).
+ * Trang Tổng quan nhân viên (Figma frame 3:102).
  */
 export function StaffDashboardPage() {
+  const { user, isAdmin } = useAuth();
+
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: '1.75rem',
-          fontWeight: 700,
-          color: '#1e293b',
-          marginBottom: '1rem',
-        }}
-      >
-        Bàn làm việc Nhân viên (Staff)
-      </h1>
-      <p style={{ color: '#64748b', marginBottom: '2rem' }}>
-        Theo dõi đơn hàng cần xử lý, cập nhật trạng thái kho sản phẩm và duyệt các yêu cầu Custom phím từ khách hàng.
-      </p>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.5rem',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            padding: '1.5rem',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
-            📦 Xử lý đơn hàng
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-            Duyệt đơn hàng mới, cập nhật mã vận đơn và chuyển trạng thái giao hàng.
-          </p>
-          <Link
-            to="/staff/orders"
-            style={{
-              color: '#2563eb',
-              textDecoration: 'none',
-              fontWeight: 500,
-              fontSize: '0.9rem',
-            }}
-          >
-            Quản lý đơn hàng →
-          </Link>
-        </div>
-
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            padding: '1.5rem',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
-            ⌨️ Danh mục sản phẩm
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-            Xem tồn kho, ẩn/hiện sản phẩm và cập nhật mô tả chi tiết.
-          </p>
-          <Link
-            to="/staff/products"
-            style={{
-              color: '#2563eb',
-              textDecoration: 'none',
-              fontWeight: 500,
-              fontSize: '0.9rem',
-            }}
-          >
-            Quản lý sản phẩm →
-          </Link>
-        </div>
-
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            padding: '1.5rem',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.5rem' }}>
-            🔧 Duyệt Custom phím
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
-            Tiếp nhận cấu hình custom từ khách, báo giá và cập nhật tiến độ ráp phím.
-          </p>
-          <Link
-            to="/staff/custom-requests"
-            style={{
-              color: '#2563eb',
-              textDecoration: 'none',
-              fontWeight: 500,
-              fontSize: '0.9rem',
-            }}
-          >
-            Duyệt yêu cầu Custom →
-          </Link>
-        </div>
+    <>
+      <div>
+        <h1 className="km-portal-title">Tổng quan nhân viên</h1>
+        <p className="km-auth-subtitle">
+          Xin chào {user?.fullName || user?.email}. Chọn nghiệp vụ cần xử lý bên dưới.
+        </p>
       </div>
-    </div>
+
+      <div className="km-kpi-grid">
+        <article className="km-kpi-card">
+          <span className="km-kpi-label">Đơn hàng</span>
+          <strong style={{ fontSize: 'var(--text-xl)' }}>Quản lý đơn hàng</strong>
+          <p className="km-field-hint">
+            Xác nhận đơn mới, sửa số lượng (Mới/Đã xác nhận), xác nhận thanh toán, giao hàng hoặc hủy đơn.
+          </p>
+          <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+            <Link to="/staff/orders" className="km-btn km-btn-primary km-btn-sm">
+              Mở đơn hàng →
+            </Link>
+          </div>
+        </article>
+
+        <article className="km-kpi-card">
+          <span className="km-kpi-label">Kho sản phẩm</span>
+          <strong style={{ fontSize: 'var(--text-xl)' }}>Quản lý sản phẩm</strong>
+          <p className="km-field-hint">
+            {isAdmin
+              ? 'Thêm, chỉnh sửa thông tin, tồn kho và ẩn/hiện sản phẩm (quyền Quản trị viên).'
+              : 'Thêm, chỉnh sửa thông tin và cập nhật số lượng tồn kho sản phẩm.'}
+          </p>
+          <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+            <Link to="/staff/products" className="km-btn km-btn-primary km-btn-sm">
+              Mở sản phẩm →
+            </Link>
+          </div>
+        </article>
+
+        <article className="km-kpi-card">
+          <span className="km-kpi-label">Dịch vụ Custom</span>
+          <strong style={{ fontSize: 'var(--text-xl)' }}>Yêu cầu Custom phím</strong>
+          <p className="km-field-hint">
+            Tiếp nhận cấu hình khách gửi, lập báo giá, từ chối hoặc cập nhật tiến độ lắp ráp.
+          </p>
+          <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+            <Link to="/staff/custom-requests" className="km-btn km-btn-primary km-btn-sm">
+              Mở Custom phím →
+            </Link>
+          </div>
+        </article>
+      </div>
+    </>
   );
 }
 

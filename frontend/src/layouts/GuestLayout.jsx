@@ -1,5 +1,8 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { cartApi } from '../api/cartApi';
+import ChatWidget from '../components/ChatWidget';
 
 /**
  * Layout chính cho cửa hàng (Guest & Customer).
@@ -8,304 +11,175 @@ import { useAuth } from '../hooks/useAuth';
 export function GuestLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [cartCount, setCartCount] = useState(0);
 
   // Biểu tượng giỏ hàng và chatbot chỉ hiện với Guest (chưa đăng nhập) hoặc Customer
   const showCartAndChatbot = !user || user.role === 'CUSTOMER';
+
+  useEffect(() => {
+    if (!showCartAndChatbot) {
+      return;
+    }
+
+    let active = true;
+    const fetchCartCount = () => {
+      cartApi
+        .get()
+        .then((data) => {
+          if (active) {
+            const total = (data?.items ?? []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+            setCartCount(total);
+          }
+        })
+        .catch(() => {
+          if (active) setCartCount(0);
+        });
+    };
+
+    fetchCartCount();
+    window.addEventListener('keymech:cart-updated', fetchCartCount);
+    return () => {
+      active = false;
+      window.removeEventListener('keymech:cart-updated', fetchCartCount);
+    };
+  }, [showCartAndChatbot, user]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
+  const handleQuickSearch = (event) => {
+    event.preventDefault();
+    const text = String(new FormData(event.currentTarget).get('keyword') ?? '').trim();
+    navigate(text ? `/products?${new URLSearchParams({ keyword: text })}` : '/products');
+  };
+
+  const closeAccountMenu = (event) => {
+    event.currentTarget.closest('details').open = false;
+  };
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        backgroundColor: '#f3f4f6',
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          backgroundColor: '#111827',
-          color: '#ffffff',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1200px',
-            margin: '0 auto',
-            padding: '0.75rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Logo & Brand */}
-          <Link
-            to="/"
-            style={{
-              color: '#ffffff',
-              textDecoration: 'none',
-              fontWeight: 800,
-              fontSize: '1.35rem',
-              letterSpacing: '-0.5px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            <span role="img" aria-label="Keyboard">
-              ⌨️
-            </span>{' '}
-            KeyMech
+    <div className="km-shell">
+      <header className="km-header">
+        <div className="km-header-inner">
+          <Link to="/" className="km-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 15h6" strokeLinecap="round" />
+            </svg>
+            <span>KeyMech</span>
           </Link>
 
-          {/* Navigation links */}
-          <nav
-            aria-label="Điều hướng chính"
-            style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}
-          >
-            <Link
-              to="/"
-              style={{
-                color: '#e5e7eb',
-                textDecoration: 'none',
-                fontSize: '0.925rem',
-              }}
-            >
+          <nav className="km-nav" aria-label="Điều hướng chính">
+            <NavLink to="/" end className={({ isActive }) => `km-nav-link ${isActive ? 'active' : ''}`}>
               Trang chủ
-            </Link>
-            <Link
-              to="/products"
-              style={{
-                color: '#e5e7eb',
-                textDecoration: 'none',
-                fontSize: '0.925rem',
-              }}
-            >
+            </NavLink>
+            <NavLink to="/products" className={({ isActive }) => `km-nav-link ${isActive ? 'active' : ''}`}>
               Sản phẩm
-            </Link>
+            </NavLink>
             {user?.role === 'CUSTOMER' && (
-              <>
-                <Link
-                  to="/customer/orders"
-                  style={{
-                    color: '#e5e7eb',
-                    textDecoration: 'none',
-                    fontSize: '0.925rem',
-                  }}
-                >
-                  Đơn hàng của tôi
-                </Link>
-                <Link
-                  to="/customer/custom-requests"
-                  style={{
-                    color: '#e5e7eb',
-                    textDecoration: 'none',
-                    fontSize: '0.925rem',
-                  }}
-                >
-                  Custom phím
-                </Link>
-              </>
+              <NavLink to="/customer/custom-requests" className={({ isActive }) => `km-nav-link ${isActive ? 'active' : ''}`}>
+                Custom phím
+              </NavLink>
             )}
             {user?.role === 'STAFF' && (
-              <Link
-                to="/staff"
-                style={{
-                  color: '#60a5fa',
-                  textDecoration: 'none',
-                  fontSize: '0.925rem',
-                  fontWeight: 600,
-                }}
-              >
+              <NavLink to="/staff" className="km-nav-link km-nav-link--accent">
                 Khu vực nhân viên
-              </Link>
+              </NavLink>
             )}
             {user?.role === 'ADMIN' && (
-              <Link
-                to="/admin"
-                style={{
-                  color: '#f87171',
-                  textDecoration: 'none',
-                  fontSize: '0.925rem',
-                  fontWeight: 600,
-                }}
-              >
+              <NavLink to="/admin" className="km-nav-link km-nav-link--accent">
                 Trang quản trị
-              </Link>
+              </NavLink>
             )}
           </nav>
 
-          {/* Action buttons (Cart & Auth) */}
-          <div
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
-          >
+          <form role="search" className="km-header-search" onSubmit={handleQuickSearch}>
+            <input type="search" name="keyword" aria-label="Tìm nhanh sản phẩm" placeholder="Tìm sản phẩm" maxLength={100} />
+            <button type="submit" aria-label="Tìm kiếm">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m16 16 5 5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </form>
+
+          <div className="km-header-actions">
             {showCartAndChatbot && (
-              <Link
-                to="/cart"
-                aria-label="Xem giỏ hàng"
-                style={{
-                  color: '#ffffff',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  backgroundColor: '#1f2937',
-                  padding: '0.45rem 0.85rem',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                }}
-              >
-                <span aria-hidden="true">🛒</span>
-                <span>Giỏ hàng</span>
+              <Link to="/cart" className="km-cart-btn" aria-label="Xem giỏ hàng">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="9" cy="21" r="1" />
+                  <circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {cartCount > 0 && <span className="km-cart-badge">{cartCount}</span>}
               </Link>
             )}
 
             {!user ? (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Link
-                  to="/login"
-                  style={{
-                    color: '#ffffff',
-                    textDecoration: 'none',
-                    padding: '0.45rem 0.85rem',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    border: '1px solid #374151',
-                  }}
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  style={{
-                    backgroundColor: '#2563eb',
-                    color: '#ffffff',
-                    textDecoration: 'none',
-                    padding: '0.45rem 0.85rem',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  }}
-                >
-                  Đăng ký
-                </Link>
+              <div className="km-auth-links">
+                <Link to="/login">Đăng nhập</Link>
+                <span className="km-auth-sep">/</span>
+                <Link to="/register">Đăng ký</Link>
               </div>
             ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
+              <details
+                className="km-account-menu"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape' || !event.currentTarget.open) return;
+                  event.currentTarget.open = false;
+                  event.currentTarget.querySelector('summary').focus();
                 }}
               >
-                <Link
-                  to={
-                    user.role === 'CUSTOMER'
-                      ? '/customer/profile'
-                      : user.role === 'ADMIN'
-                        ? '/admin'
-                        : '/staff'
-                  }
-                  style={{
-                    color: '#93c5fd',
-                    fontSize: '0.875rem',
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                  }}
-                >
-                  {user.fullName || user.email} ({user.role})
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  style={{
-                    backgroundColor: '#374151',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '0.45rem 0.75rem',
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Đăng xuất
-                </button>
-              </div>
+                <summary>
+                  <span className="km-account-avatar" aria-hidden="true">{(user.fullName || user.email || '?').charAt(0).toUpperCase()}</span>
+                  <span className="km-user-name">{user.fullName || user.email}</span>
+                </summary>
+                <div className="km-account-menu-links">
+                  {user.role === 'CUSTOMER' ? (
+                    <>
+                      <Link to="/customer/profile" onClick={closeAccountMenu}>Hồ sơ cá nhân</Link>
+                      <Link to="/customer/orders" onClick={closeAccountMenu}>Đơn hàng của tôi</Link>
+                    </>
+                  ) : (
+                    <Link to={user.role === 'ADMIN' ? '/admin' : '/staff'} onClick={closeAccountMenu}>
+                      {user.role === 'ADMIN' ? 'Trang quản trị' : 'Khu vực nhân viên'}
+                    </Link>
+                  )}
+                  <button type="button" onClick={(event) => { closeAccountMenu(event); handleLogout(); }}>
+                    Đăng xuất
+                  </button>
+                </div>
+              </details>
             )}
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '1.5rem 1rem' }}>
+      <main className="km-main">
         <Outlet />
       </main>
 
-      {/* Floating Chatbot Button (Only for Guest and Customer) */}
-      {showCartAndChatbot && (
-        <div
-          role="region"
-          aria-label="Trợ lý ảo tư vấn KeyMech"
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 90,
-          }}
-        >
-          <button
-            type="button"
-            aria-label="Mở cửa sổ Chatbot tư vấn"
-            onClick={() => alert('Tính năng Chatbot tư vấn AI sẽ được mở ở Sprint sau.')}
-            style={{
-              width: '54px',
-              height: '54px',
-              borderRadius: '50%',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              boxShadow: '0 4px 10px rgba(37, 99, 235, 0.4)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem',
-            }}
-          >
-            💬
-          </button>
-        </div>
-      )}
+      {showCartAndChatbot && <ChatWidget />}
 
-      {/* Footer */}
-      <footer
-        style={{
-          backgroundColor: '#111827',
-          color: '#9ca3af',
-          padding: '2rem 1rem',
-          marginTop: 'auto',
-          fontSize: '0.875rem',
-          textAlign: 'center',
-        }}
-      >
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <p style={{ margin: '0 0 0.5rem 0' }}>
-            © 2026 KeyMech - Nền tảng thương mại điện tử & Custom bàn phím cơ.
-          </p>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
-            Dự án Nhóm 4 | Hỗ trợ responsive từ 360px | Bảo mật phân quyền nghiêm ngặt.
-          </p>
+      <footer className="km-footer">
+        <div className="km-footer-inner">
+          <div className="km-footer-brand">
+            <div>KeyMech</div>
+            <div>Đam mê phím cơ đích thực.</div>
+          </div>
+          <div>
+            <p className="km-footer-col-title">Khám phá</p>
+            <p className="km-footer-col-text">Bàn phím • Switch • Keycap</p>
+          </div>
+          <div>
+            <p className="km-footer-col-title">Hỗ trợ</p>
+            <p className="km-footer-col-text">hello@keymech.vn • 0901 234 567</p>
+          </div>
         </div>
       </footer>
     </div>
