@@ -16,7 +16,7 @@ function formatTimer(sec) {
 
 /**
  * Trang Đặt lại mật khẩu bằng mã xác thực 6 chữ số (Figma frame 3:264).
- * Mã có hiệu lực 10 phút, tối đa 5 lần nhập sai.
+ * Server là nguồn kiểm tra chính xác cho hạn 10 phút và giới hạn 5 lần nhập sai.
  */
 export function ResetPasswordPage() {
   const location = useLocation();
@@ -29,6 +29,7 @@ export function ResetPasswordPage() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [needsNewCode, setNeedsNewCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [ttl, setTtl] = useState(CODE_TTL_SECONDS);
@@ -80,6 +81,8 @@ export function ResetPasswordPage() {
       setTtl(CODE_TTL_SECONDS);
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
       setWrongAttempts(0);
+      setNeedsNewCode(false);
+      setServerError('');
       toast.info('Nếu email tồn tại, mã xác thực mới đã được gửi.');
     }
   };
@@ -88,14 +91,6 @@ export function ResetPasswordPage() {
     e.preventDefault();
     setServerError('');
 
-    if (ttl <= 0) {
-      setServerError('Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới.');
-      return;
-    }
-    if (wrongAttempts >= MAX_WRONG_ATTEMPTS) {
-      setServerError('Bạn đã nhập sai 5/5 lần. Vui lòng yêu cầu mã mới.');
-      return;
-    }
     if (!validate()) return;
 
     setSubmitting(true);
@@ -108,10 +103,22 @@ export function ResetPasswordPage() {
       toast.success('Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.');
       navigate('/login', { replace: true });
     } catch (err) {
-      const msg =
-        err.response?.data?.message || 'Mã xác thực không đúng hoặc đã hết hạn.';
-      setWrongAttempts((n) => Math.min(MAX_WRONG_ATTEMPTS, n + 1));
-      setServerError(msg);
+      const status = err?.response?.status;
+      const errorCode = err?.response?.data?.error;
+      const serverMsg = err?.response?.data?.message;
+
+      if (status === 400 && errorCode === 'INVALID_CODE') {
+        const msg = serverMsg || 'Mã xác thực không đúng hoặc đã hết hạn.';
+        setServerError(msg);
+        if (/hết hạn|quá nhiều lần|yêu cầu mã mới/i.test(msg)) {
+          setNeedsNewCode(true);
+          setResendCooldown(0);
+        } else {
+          setWrongAttempts((n) => Math.min(MAX_WRONG_ATTEMPTS, n + 1));
+        }
+      } else {
+        setServerError('Có lỗi xảy ra, vui lòng thử lại');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +172,9 @@ export function ResetPasswordPage() {
           </div>
 
           <p className="km-countdown">
-            {ttl > 0 ? `Mã hết hạn sau ${formatTimer(ttl)}` : 'Mã xác thực đã hết hạn.'}
+            {ttl > 0
+              ? `Thời gian tham khảo: còn ${formatTimer(ttl)}`
+              : 'Mã có thể đã hết hạn, bạn có thể gửi lại mã mới.'}
           </p>
 
           <button
@@ -181,15 +190,26 @@ export function ResetPasswordPage() {
                 : 'Gửi lại mã'}
           </button>
 
-          {wrongAttempts > 0 && (
+          {wrongAttempts > 0 && !needsNewCode && (
             <p className="km-field-error">
-              Bạn đã nhập sai {wrongAttempts}/{MAX_WRONG_ATTEMPTS} lần. Sau {MAX_WRONG_ATTEMPTS} lần sai, vui lòng yêu cầu mã mới.
+              Bạn đã nhập sai mã {wrongAttempts}/{MAX_WRONG_ATTEMPTS} lần. Sau {MAX_WRONG_ATTEMPTS} lần sai, vui lòng yêu cầu mã mới.
             </p>
           )}
 
           {serverError && (
             <div role="alert" className="km-alert-error">
-              {serverError}
+              <p style={{ margin: 0 }}>{serverError}</p>
+              {needsNewCode && (
+                <button
+                  type="button"
+                  className="km-btn km-btn-soft km-btn-sm"
+                  style={{ marginTop: '8px' }}
+                  disabled={resending || !email.trim()}
+                  onClick={handleResend}
+                >
+                  Gửi lại mã
+                </button>
+              )}
             </div>
           )}
 
@@ -232,11 +252,7 @@ export function ResetPasswordPage() {
             {errors.confirmPassword && <p className="km-field-error">{errors.confirmPassword}</p>}
           </div>
 
-          <button
-            type="submit"
-            className="km-btn km-btn-primary km-btn-full"
-            disabled={submitting || wrongAttempts >= MAX_WRONG_ATTEMPTS || ttl <= 0}
-          >
+          <button type="submit" className="km-btn km-btn-primary km-btn-full" disabled={submitting}>
             {submitting ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
           </button>
         </form>
