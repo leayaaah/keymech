@@ -45,7 +45,7 @@ export const customRequestApi = {
     return axiosClient.get('/staff/custom-requests', { params });
   },
 
-  // TODO(backend): GET /api/staff/custom-requests/{id}
+  // TODO(backend): not in plan section 6, needs team approval
   getForStaff(id) {
     if (USE_MOCK) return customMock.getById(id);
     return axiosClient.get(`/staff/custom-requests/${encodeURIComponent(id)}`);
