@@ -33,7 +33,9 @@ import StaffDashboardPage from '../pages/staff/StaffDashboardPage';
 import StaffOrdersPage from '../pages/staff/StaffOrdersPage';
 import StaffOrderDetailPage from '../pages/staff/StaffOrderDetailPage';
 import StaffProductsPage from '../pages/staff/StaffProductsPage';
+import StaffProductFormPage from '../pages/staff/StaffProductFormPage';
 import StaffCustomRequestsPage from '../pages/staff/StaffCustomRequestsPage';
+import StaffCustomRequestDetailPage from '../pages/staff/StaffCustomRequestDetailPage';
 
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -95,7 +97,10 @@ export function AppRoutes() {
           <Route path="orders" element={<StaffOrdersPage />} />
           <Route path="orders/:id" element={<StaffOrderDetailPage />} />
           <Route path="products" element={<StaffProductsPage />} />
+          <Route path="products/new" element={<StaffProductFormPage />} />
+          <Route path="products/:id/edit" element={<StaffProductFormPage />} />
           <Route path="custom-requests" element={<StaffCustomRequestsPage />} />
+          <Route path="custom-requests/:id" element={<StaffCustomRequestDetailPage />} />
         </Route>
       </Route>
 
