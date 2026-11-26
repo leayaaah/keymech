@@ -4,6 +4,7 @@ import customRequestApi from '../../api/customRequestApi';
 import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
+import PageNavigation from '../../components/PageNavigation';
 import formatVND from '../../utils/formatVND';
 import { formatDate } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
@@ -24,6 +25,8 @@ function customBadgeClass(status) {
 export function StaffCustomRequestsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [requests, setRequests] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -31,10 +34,11 @@ export function StaffCustomRequestsPage() {
   useEffect(() => {
     let active = true;
     customRequestApi
-      .listForStaff({ status: statusFilter || undefined })
+      .listForStaff({ status: statusFilter || undefined, page })
       .then((res) => {
         if (active) {
           setRequests(res?.content ?? []);
+          setTotalPages(res?.totalPages ?? 0);
           setError('');
         }
       })
@@ -49,7 +53,7 @@ export function StaffCustomRequestsPage() {
     return () => {
       active = false;
     };
-  }, [statusFilter, reloadKey]);
+  }, [statusFilter, page, reloadKey]);
 
   return (
     <>
@@ -68,6 +72,7 @@ export function StaffCustomRequestsPage() {
             value={statusFilter}
             onChange={(e) => {
               setLoading(true);
+              setPage(0);
               setStatusFilter(e.target.value);
             }}
           >
@@ -116,11 +121,10 @@ export function StaffCustomRequestsPage() {
                     <strong>{req.requestCode || `CUS-${req.id}`}</strong>
                   </td>
                   <td role="cell" data-label="Khách hàng">
-                    <div>{req.customerName}</div>
-                    <div className="km-field-hint">{req.customerEmail}</div>
+                    #{req.customerId}
                   </td>
                   <td role="cell" data-label="Cấu hình">
-                    {req.layout} • {req.switchType} ({req.switchName})
+                    {[req.layout, req.switchType, req.switchName].filter(Boolean).join(' • ')}
                   </td>
                   <td role="cell" data-label="Báo giá / Ngân sách">
                     {req.quotedPrice
@@ -145,6 +149,14 @@ export function StaffCustomRequestsPage() {
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && !error && (
+        <PageNavigation page={page} totalPages={totalPages} label="Phân trang yêu cầu Custom"
+          onChange={(next) => {
+            setLoading(true);
+            setPage(next);
+          }}
+        />
       )}
     </>
   );

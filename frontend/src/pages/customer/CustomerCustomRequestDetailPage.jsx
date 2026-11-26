@@ -11,6 +11,8 @@ import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/customer.css';
 
+const ACTOR_LABELS = { CUSTOMER: 'Khách hàng', STAFF: 'Nhân viên', ADMIN: 'Quản trị viên' };
+
 function customBadgeClass(status) {
   if (status === 'COMPLETED' || status === 'ACCEPTED') return 'km-badge km-badge--success';
   if (status === 'CANCELLED' || status === 'REJECTED') return 'km-badge km-badge--danger';
@@ -148,7 +150,7 @@ export function CustomerCustomRequestDetailPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-base)' }}>
             <div>Layout: {req.layout}</div>
             <div>
-              Switch: {req.switchType} • {req.switchName}
+              Switch: {[req.switchType, req.switchName].filter(Boolean).join(' • ')}
             </div>
             {req.caseMaterial && <div>Case: {req.caseMaterial}</div>}
             {req.keycapSet && <div>Keycap: {req.keycapSet}</div>}
@@ -180,7 +182,7 @@ export function CustomerCustomRequestDetailPage() {
                     {h.fromStatus ? `${customStatusLabels[h.fromStatus] || h.fromStatus} → ` : ''}
                     {customStatusLabels[h.toStatus] || h.toStatus}
                   </strong>
-                  {h.actorName && <span className="km-field-hint">{h.actorName}</span>}
+                  {ACTOR_LABELS[h.actorRole] && <span className="km-field-hint">{ACTOR_LABELS[h.actorRole]}</span>}
                   {h.note && <span className="km-field-hint">{h.note}</span>}
                 </div>
               ))}

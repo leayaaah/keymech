@@ -1,14 +1,17 @@
 package vn.edu.iuh.keymech.repository;
 
+import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +27,12 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Page<Product> findByCategoryIdAndStatus(Long categoryId, VisibilityStatus status, Pageable pageable);
 
+    boolean existsByCategoryIdAndStatus(long categoryId, VisibilityStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id = :id")
+    Optional<Product> lockById(long id);
+
     /**
      * Lọc động theo nhiều tiêu chí (null = không lọc theo trường đó).
      * brand, layout, minPrice, maxPrice, keyword — trước đây chỉ nhận nhưng không áp dụng.
@@ -33,6 +42,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
         return (Root<Product> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("status"), VisibilityStatus.ACTIVE));
+            predicates.add(cb.equal(root.get("category").get("status"), VisibilityStatus.ACTIVE));
 
             if (categoryId != null) {
                 predicates.add(cb.equal(root.get("category").get("id"), categoryId));

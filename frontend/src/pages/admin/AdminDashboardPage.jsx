@@ -4,6 +4,8 @@ import adminCategoryApi from '../../api/adminCategoryApi';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
 import { getFeatureErrorMessage } from '../../utils/apiError';
+import formatVND from '../../utils/formatVND';
+import { customStatusLabels } from '../../utils/orderLabels';
 import '../../styles/portal.css';
 
 /**
@@ -38,6 +40,19 @@ export function AdminDashboardPage() {
     };
   }, [reloadKey]);
 
+  const metrics = stats && [
+    ['Tổng đơn hàng', stats.totalOrders],
+    ['Đơn chờ xử lý', stats.pendingOrders],
+    ['Đơn hôm nay', stats.ordersToday],
+    ['Đơn tháng này', stats.ordersThisMonth],
+    ['Doanh thu hôm nay', formatVND(stats.revenueToday)],
+    ['Doanh thu tháng này', formatVND(stats.revenueThisMonth)],
+    ['Sản phẩm', stats.totalProducts],
+    ['Người dùng', stats.totalUsers],
+    ['Người dùng mới hôm nay', stats.newUsersToday],
+    ['Người dùng mới tháng này', stats.newUsersThisMonth],
+  ];
+
   return (
     <>
       <div>
@@ -61,29 +76,28 @@ export function AdminDashboardPage() {
         />
       )}
 
-      {!loading && !error && stats && (
-        <div className="km-kpi-grid">
-          <div className="km-kpi-card">
-            <span className="km-kpi-label">Tổng đơn hàng</span>
-            <span className="km-kpi-value">{stats.totalOrders ?? 0}</span>
+      {!loading && !error && metrics && (
+        <>
+          <div className="km-kpi-grid">
+            {metrics.map(([label, value]) => (
+              <div className="km-kpi-card" key={label}>
+                <span className="km-kpi-label">{label}</span>
+                <span className="km-kpi-value">{value}</span>
+              </div>
+            ))}
           </div>
-          <div className="km-kpi-card">
-            <span className="km-kpi-label">Đơn chờ xử lý</span>
-            <span className="km-kpi-value">{stats.pendingOrders ?? 0}</span>
-          </div>
-          <div className="km-kpi-card">
-            <span className="km-kpi-label">Sản phẩm</span>
-            <span className="km-kpi-value">{stats.totalProducts ?? 0}</span>
-          </div>
-          <div className="km-kpi-card">
-            <span className="km-kpi-label">Custom chờ duyệt</span>
-            <span className="km-kpi-value">{stats.pendingCustomRequests ?? 0}</span>
-          </div>
-          <div className="km-kpi-card">
-            <span className="km-kpi-label">Người dùng</span>
-            <span className="km-kpi-value">{stats.totalUsers ?? 0}</span>
-          </div>
-        </div>
+          <section aria-labelledby="custom-stats">
+            <h2 id="custom-stats">Yêu cầu Custom theo trạng thái</h2>
+            <div className="km-kpi-grid">
+              {Object.entries(customStatusLabels).map(([status, label]) => (
+                <div className="km-kpi-card" key={status}>
+                  <span className="km-kpi-label">{label}</span>
+                  <span className="km-kpi-value">{stats.customRequestsByStatus[status]}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
       )}
 
       <div className="km-kpi-grid">

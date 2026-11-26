@@ -59,7 +59,7 @@ public class ProductService {
     public ProductsDetailResponse detail(Long id) {
         Product p = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
-        if (p.getStatus() != VisibilityStatus.ACTIVE) {
+        if (p.getStatus() != VisibilityStatus.ACTIVE || p.getCategory().getStatus() != VisibilityStatus.ACTIVE) {
             throw new ResourceNotFoundException("Sản phẩm không còn hiển thị");
         }
         return toDetailResponse(p);
