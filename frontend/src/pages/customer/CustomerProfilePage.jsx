@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import authApi from '../../api/authApi';
 import userApi from '../../api/userApi';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
@@ -10,15 +11,15 @@ import '../../styles/customer.css';
 
 /**
  * Trang Hồ sơ cá nhân Customer (Figma frame 3:562).
- * Kết nối GET/PUT /api/users/me.
+ * Tải thông tin từ GET /api/auth/me; lưu qua PUT /api/users/me rồi làm mới phiên.
  */
 export function CustomerProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
 
-  const [fullName, setFullName] = useState(user?.fullName || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [address, setAddress] = useState(user?.address || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [email, setEmail] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,27 +29,21 @@ export function CustomerProfilePage() {
 
   useEffect(() => {
     let active = true;
-    userApi
-      .getProfile()
+    authApi
+      .getMe()
       .then((data) => {
         if (!active) return;
         setFullName(data?.fullName || '');
         setPhone(data?.phone || '');
         setAddress(data?.address || '');
-        setEmail(data?.email || user?.email || '');
+        setEmail(data?.email || '');
         setError('');
       })
       .catch((err) => {
         if (!active) return;
-        // Fallback sang thông tin phiên hiện tại nếu /users/me chưa khả dụng
-        if (user) {
-          setFullName(user.fullName || '');
-          setPhone(user.phone || '');
-          setAddress(user.address || '');
-          setEmail(user.email || '');
-        } else {
-          setError(err.response?.data?.message || 'Không thể tải thông tin hồ sơ.');
-        }
+        setError(
+          err?.response?.data?.message || 'Không thể tải thông tin hồ sơ. Vui lòng thử lại.'
+        );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -56,7 +51,7 @@ export function CustomerProfilePage() {
     return () => {
       active = false;
     };
-  }, [reloadKey, user]);
+  }, [reloadKey]);
 
   const validate = () => {
     const next = {};
@@ -84,10 +79,16 @@ export function CustomerProfilePage() {
         phone: phone.trim() || null,
         address: address.trim() || null,
       });
-      await refreshUser();
+      const refreshed = await refreshUser();
+      if (refreshed) {
+        setFullName(refreshed.fullName || '');
+        setPhone(refreshed.phone || '');
+        setAddress(refreshed.address || '');
+        setEmail(refreshed.email || '');
+      }
       toast.success('Thông tin tài khoản của bạn đã được lưu an toàn.');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không thể cập nhật hồ sơ.');
+      toast.error(err?.response?.data?.message || 'Không thể cập nhật hồ sơ.');
     } finally {
       setSaving(false);
     }
