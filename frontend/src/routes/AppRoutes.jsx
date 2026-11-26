@@ -40,6 +40,7 @@ import StaffCustomRequestDetailPage from '../pages/staff/StaffCustomRequestDetai
 // Admin Pages
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminStaffPage from '../pages/admin/AdminStaffPage';
+import AdminCategoriesPage from '../pages/admin/AdminCategoriesPage';
 import AdminReportsPage from '../pages/admin/AdminReportsPage';
 
 // Common / Error Pages
@@ -109,6 +110,7 @@ export function AppRoutes() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
           <Route path="staff" element={<AdminStaffPage />} />
+          <Route path="categories" element={<AdminCategoriesPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
         </Route>
       </Route>
