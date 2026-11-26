@@ -15,7 +15,6 @@ export function ProductCard({ product }) {
 
   const outOfStock = (product.stockQuantity ?? 0) <= 0;
   const specParts = [
-    outOfStock ? 'Hết hàng' : null,
     product.layout,
     product.switchType,
   ].filter(Boolean);
@@ -40,7 +39,8 @@ export function ProductCard({ product }) {
   return (
     <article className="km-product-card">
       <Link to={`/products/${product.id}`} className="km-product-card-link">
-        <div className="km-product-card-img">
+        <div className={`km-product-card-img${outOfStock ? ' km-product-card-img--out' : ''}`}>
+          {outOfStock && <span className="km-stock-badge">Hết hàng</span>}
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} />
           ) : (
@@ -56,7 +56,7 @@ export function ProductCard({ product }) {
         <h3 className="km-product-card-title">{product.name}</h3>
         {product.brand && <p className="km-product-card-brand">{product.brand}</p>}
         {specParts.length > 0 && (
-          <p className={`km-product-card-specs ${outOfStock ? 'km-product-card-specs--out' : ''}`}>
+          <p className="km-product-card-specs">
             {specParts.join('  •  ')}
           </p>
         )}
@@ -70,7 +70,7 @@ export function ProductCard({ product }) {
           disabled={outOfStock || adding}
           onClick={handleAddToCart}
         >
-          {adding ? 'Đang thêm...' : 'Thêm vào giỏ'}
+          {adding ? 'Đang thêm...' : outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
         </button>
       )}
     </article>

@@ -67,10 +67,6 @@
   object-fit: cover;
 }
 
-.km-hero-visual img[hidden] {
-  display: none;
-}
-
 .km-section-header {
   display: flex;
   align-items: center;
@@ -95,34 +91,9 @@
 
 .km-category-grid {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: clamp(180px, 22vw, 248px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-4);
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scroll-behavior: smooth;
-  scrollbar-color: var(--color-border-strong) transparent;
   padding: 4px 4px var(--space-3);
-}
-
-.km-category-controls {
-  display: flex;
-  flex: none;
-  gap: var(--space-2);
-}
-
-.km-category-controls .km-btn {
-  width: 44px;
-  padding: 0;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: var(--text-xl);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .km-category-grid {
-    scroll-behavior: auto;
-  }
 }
 
 .km-home-categories {
@@ -149,13 +120,20 @@
 }
 
 .km-category-thumb {
-  height: 72px;
+  aspect-ratio: 1;
   border-radius: var(--radius-lg);
   background-color: var(--color-surface-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-primary);
+  overflow: hidden;
+}
+
+.km-category-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .km-category-name {
@@ -186,12 +164,6 @@
   align-items: flex-start;
 }
 
-.km-custom-banner h2 {
-  font-size: var(--text-4xl);
-  font-weight: 600;
-  margin: 0;
-}
-
 .km-custom-banner p {
   font-size: var(--text-lg);
   color: var(--color-text-muted);
@@ -199,28 +171,22 @@
   line-height: 1.5;
 }
 
-.km-assistant-banner {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
+.km-shop-benefits {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  align-items: flex-start;
-}
-
-.km-assistant-banner h2 {
-  font-size: 22px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3) var(--space-8);
+  margin: 0;
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
   font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
+  list-style: none;
 }
 
-.km-assistant-banner p {
-  font-size: var(--text-base);
-  color: var(--color-text-muted);
-  margin: 0;
+.km-shop-benefits span {
+  color: var(--color-success);
+  margin-right: var(--space-1);
 }
 
 /* ========== Product List Page ========== */
@@ -228,14 +194,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-}
-
-.km-catalog-header h1 {
-  font-size: clamp(32px, 4vw, 48px);
-  font-weight: 750;
-  letter-spacing: -0.04em;
-  color: var(--color-text);
-  margin: var(--space-2) 0;
 }
 
 .km-catalog-subtitle {
@@ -316,8 +274,39 @@
 
 .km-filter-group-label {
   font-size: var(--text-base);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--color-text);
+}
+
+.km-price-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.km-price-field input {
+  min-width: 0;
+  flex: 1;
+}
+
+.km-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.km-filter-chips button {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+  cursor: pointer;
 }
 
 .km-filter-option {
@@ -341,12 +330,6 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-}
-
-.km-filter-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 .km-product-grid-3 {
@@ -443,15 +426,6 @@
   margin: 0;
 }
 
-.km-detail-title {
-  font-size: clamp(30px, 4vw, 48px);
-  font-weight: 750;
-  letter-spacing: -0.04em;
-  color: var(--color-text);
-  margin: 0;
-  line-height: 1.2;
-}
-
 .km-detail-short {
   font-size: var(--text-md);
   color: var(--color-text-muted);
@@ -476,11 +450,26 @@
   color: var(--color-danger);
 }
 
-.km-detail-specs-inline {
-  font-size: var(--text-base);
+.km-detail-qty-label {
+  display: block;
   font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.km-switch-help {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.km-switch-help summary {
   color: var(--color-primary);
-  margin: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.km-switch-help p {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
 }
 
 .km-qty-stepper {
@@ -798,10 +787,11 @@
     height: 220px;
   }
   .km-category-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
     grid-auto-columns: clamp(156px, 62vw, 230px);
-  }
-  .km-category-controls {
-    display: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
   }
   .km-catalog-body {
     grid-template-columns: 1fr;
@@ -817,6 +807,25 @@
   }
   .km-detail-media {
     height: 300px;
+  }
+  .km-detail--purchasable {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  .km-detail--purchasable .km-detail-actions {
+    position: fixed;
+    z-index: 85;
+    inset: auto 0 0;
+    justify-content: center;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+  }
+  .km-detail-actions .km-btn {
+    flex: 1 1 0;
+    max-width: 240px;
+  }
+  .km-shell:has(.km-detail--purchasable) .km-chat-fab {
+    bottom: calc(76px + env(safe-area-inset-bottom));
   }
   .km-detail-buy,
   .km-detail-desc-card {

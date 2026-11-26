@@ -186,14 +186,6 @@
   color: var(--color-primary);
 }
 
-.km-page-heading {
-  font-size: clamp(32px, 4vw, 48px);
-  font-weight: 750;
-  letter-spacing: -0.04em;
-  color: var(--color-text);
-  margin: 0;
-}
-
 .km-checkout-grid {
   display: grid;
   grid-template-columns: 1fr 420px;
@@ -338,8 +330,5 @@
   .km-panel,
   .km-success-card {
     padding: var(--space-5);
-  }
-  .km-page-heading {
-    font-size: var(--text-3xl);
   }
 }

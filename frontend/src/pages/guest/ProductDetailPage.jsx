@@ -21,6 +21,12 @@ const SPEC_LABELS = {
   profile: 'Profile',
 };
 
+const SWITCH_DESCRIPTIONS = {
+  Tactile: 'Có một khấc nhẹ khi nhấn, giúp bạn cảm nhận điểm kích hoạt.',
+  Linear: 'Hành trình phím trơn và đều, không có khấc phản hồi.',
+  Clicky: 'Có khấc phản hồi và tiếng click rõ khi nhấn.',
+};
+
 function readSpecRows(specs) {
   if (!specs?.trim()) return [];
 
@@ -73,14 +79,19 @@ export function ProductDetailPage() {
         setError(null);
         setQuantity(1);
 
-        // Tải sản phẩm liên quan
-        productApi
-          .list({ page: 0, size: 5, categoryId: data?.categoryId })
+        setRelated([]);
+        const filters = data.layout ? { layout: data.layout } : {};
+        productApi.list({ page: 0, size: data.layout ? 5 : 24, ...filters })
           .then((res) => {
-            if (!ignore) {
-              const items = (res?.content ?? []).filter((p) => p.id !== data.id).slice(0, 4);
-              setRelated(items);
-            }
+            if (ignore) return;
+            const items = (res?.content ?? []).filter((item) => item.id !== data.id);
+            const similar = data.switchType
+              ? items.filter((item) => item.switchType === data.switchType)
+              : [];
+            const recommendations = data.layout
+              ? [...similar, ...items.filter((item) => !similar.includes(item))]
+              : similar;
+            setRelated(recommendations.slice(0, 4));
           })
           .catch(() => {
             if (!ignore) setRelated([]);
@@ -104,6 +115,14 @@ export function ProductDetailPage() {
   }, [id, reloadKey]);
 
   const stock = product?.stockQuantity ?? 0;
+
+  useEffect(() => {
+    if (!loading && !notFound && !error && String(product?.id) === String(Number(id))) {
+      document.title = `${product.name} | KeyMech`;
+    } else {
+      document.title = notFound ? 'Không tìm thấy sản phẩm | KeyMech' : 'Chi tiết sản phẩm | KeyMech';
+    }
+  }, [id, product, loading, notFound, error]);
 
   const handleAddToCart = async (goToCart = false) => {
     if (!product || stock <= 0 || adding) return;
@@ -145,11 +164,10 @@ export function ProductDetailPage() {
     );
   }
 
-  const inlineSpecs = [product.layout, product.switchType, product.connection].filter(Boolean);
   const specRows = readSpecRows(product.specs);
 
   return (
-    <div className="km-detail">
+    <div className={`km-detail${isStaffOrAdmin ? '' : ' km-detail--purchasable'}`}>
       <nav className="km-breadcrumb" aria-label="Breadcrumb">
         <Link to="/">Trang chủ</Link>
         <span>/</span>
@@ -175,7 +193,7 @@ export function ProductDetailPage() {
           <p className="km-detail-brand">
             {[product.brand, product.categoryName].filter(Boolean).join('  /  ')}
           </p>
-          <h1 className="km-detail-title">{product.name}</h1>
+          <h1 className="km-page-title">{product.name}</h1>
           {product.descriptionShort && (
             <p className="km-detail-short">{product.descriptionShort}</p>
           )}
@@ -183,9 +201,6 @@ export function ProductDetailPage() {
           <p className={`km-detail-stock ${stock <= 0 ? 'km-detail-stock--out' : ''}`}>
             {stock > 0 ? `● Còn ${stock} sản phẩm` : '● Hết hàng'}
           </p>
-          {inlineSpecs.length > 0 && (
-            <p className="km-detail-specs-inline">{inlineSpecs.join('  •  ')}</p>
-          )}
 
           {isStaffOrAdmin ? (
             <div className="km-staff-notice" role="status">
@@ -193,14 +208,11 @@ export function ProductDetailPage() {
             </div>
           ) : (
             <>
-              <div>
-                <label
-                  htmlFor="detail-qty"
-                  style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}
-                >
+              <div role="group" aria-labelledby="detail-qty-label">
+                <span id="detail-qty-label" className="km-detail-qty-label">
                   Số lượng
-                </label>
-                <div className="km-qty-stepper" id="detail-qty">
+                </span>
+                <div className="km-qty-stepper">
                   <button
                     type="button"
                     className="km-qty-btn"
@@ -210,7 +222,7 @@ export function ProductDetailPage() {
                   >
                     −
                   </button>
-                  <span className="km-qty-value">{quantity}</span>
+                  <span className="km-qty-value" aria-live="polite">{quantity}</span>
                   <button
                     type="button"
                     className="km-qty-btn"
@@ -221,11 +233,6 @@ export function ProductDetailPage() {
                     +
                   </button>
                 </div>
-                {stock > 0 && (
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>
-                    Tối đa {stock} sản phẩm. Số lượng tối thiểu: 1.
-                  </p>
-                )}
               </div>
 
               <div className="km-detail-actions">
@@ -280,7 +287,15 @@ export function ProductDetailPage() {
         {product.switchType && (
           <div className="km-spec-row">
             <span className="km-spec-key">Switch</span>
-            <span>{product.switchType}</span>
+            <div>
+              {product.switchType}
+              {Object.hasOwn(SWITCH_DESCRIPTIONS, product.switchType) && (
+                <details className="km-switch-help">
+                  <summary>Loại switch này có gì khác?</summary>
+                  <p>{SWITCH_DESCRIPTIONS[product.switchType]}</p>
+                </details>
+              )}
+            </div>
           </div>
         )}
         {specRows.map(([key, label, value]) => (

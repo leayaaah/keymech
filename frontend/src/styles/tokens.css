@@ -20,9 +20,9 @@
   --color-border-strong: #d1d5db;
   --color-border-input: #d1d6de;
 
-  --color-success: #16a34a;
+  --color-success: #166534;
   --color-success-soft: #dcfce7;
-  --color-warning: #d97706;
+  --color-warning: #92400e;
   --color-warning-soft: #fef3c7;
   --color-danger: #dc2626;
   --color-danger-soft: #fee2e2;
@@ -30,8 +30,8 @@
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --text-xs: 12px;
-  --text-2xs: 10px;
-  --text-sm: 13px;
+  --text-2xs: 12px;
+  --text-sm: 14px;
   --text-base: 15px;
   --text-md: 15px;
   --text-lg: 16px;

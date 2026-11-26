@@ -94,7 +94,7 @@ export default function CheckoutPage() {
   return (
     <div className="km-checkout">
       <div className="km-steps-crumb">Giỏ hàng → Thanh toán → Hoàn tất</div>
-      <h1 className="km-page-heading">Thanh toán</h1>
+      <h1 className="km-page-title">Thanh toán</h1>
 
       {cartError ? (
         <ErrorState
@@ -205,12 +205,12 @@ export default function CheckoutPage() {
                 disabled={submitting}
                 onChange={() => setPaymentMethod('BANK_TRANSFER')}
               />
-              <span>Chuyển khoản — Mô phỏng</span>
+              <span>Chuyển khoản ngân hàng</span>
             </label>
 
             {paymentMethod === 'BANK_TRANSFER' && (
               <div className="km-alert-info">
-                <strong>Thông tin chuyển khoản (mô phỏng)</strong>
+                <strong>Thông tin chuyển khoản thử nghiệm</strong>
                 <div>Ngân hàng: Vietcombank</div>
                 <div>Số tài khoản: 0123 456 789</div>
                 <div>Chủ tài khoản: KEYMECH</div>

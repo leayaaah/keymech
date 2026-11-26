@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
  * Trang hiển thị lỗi 403 - Không đủ quyền truy cập.
  */
 export function ForbiddenPage() {
+  useEffect(() => {
+    document.title = 'Không đủ quyền truy cập | KeyMech';
+  }, []);
+
   return (
     <div
       role="region"

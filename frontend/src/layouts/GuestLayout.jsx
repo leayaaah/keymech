@@ -49,6 +49,16 @@ export function GuestLayout() {
     navigate('/');
   };
 
+  const handleQuickSearch = (event) => {
+    event.preventDefault();
+    const text = String(new FormData(event.currentTarget).get('keyword') ?? '').trim();
+    navigate(text ? `/products?${new URLSearchParams({ keyword: text })}` : '/products');
+  };
+
+  const closeAccountMenu = (event) => {
+    event.currentTarget.closest('details').open = false;
+  };
+
   return (
     <div className="km-shell">
       <header className="km-header">
@@ -69,14 +79,9 @@ export function GuestLayout() {
               Sản phẩm
             </NavLink>
             {user?.role === 'CUSTOMER' && (
-              <>
-                <NavLink to="/customer/orders" className={({ isActive }) => `km-nav-link ${isActive ? 'active' : ''}`}>
-                  Đơn hàng của tôi
-                </NavLink>
-                <NavLink to="/customer/custom-requests" className={({ isActive }) => `km-nav-link ${isActive ? 'active' : ''}`}>
-                  Custom phím
-                </NavLink>
-              </>
+              <NavLink to="/customer/custom-requests" className={({ isActive }) => `km-nav-link ${isActive ? 'active' : ''}`}>
+                Custom phím
+              </NavLink>
             )}
             {user?.role === 'STAFF' && (
               <NavLink to="/staff" className="km-nav-link km-nav-link--accent">
@@ -89,6 +94,16 @@ export function GuestLayout() {
               </NavLink>
             )}
           </nav>
+
+          <form role="search" className="km-header-search" onSubmit={handleQuickSearch}>
+            <input type="search" name="keyword" aria-label="Tìm nhanh sản phẩm" placeholder="Tìm sản phẩm" maxLength={100} />
+            <button type="submit" aria-label="Tìm kiếm">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m16 16 5 5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </form>
 
           <div className="km-header-actions">
             {showCartAndChatbot && (
@@ -109,23 +124,37 @@ export function GuestLayout() {
                 <Link to="/register">Đăng ký</Link>
               </div>
             ) : (
-              <div className="km-user-pill">
-                <Link
-                  to={
-                    user.role === 'CUSTOMER'
-                      ? '/customer/profile'
-                      : user.role === 'ADMIN'
-                        ? '/admin'
-                        : '/staff'
-                  }
-                  className="km-user-name"
-                >
-                  {user.fullName || user.email}
-                </Link>
-                <button type="button" onClick={handleLogout} className="km-logout-btn">
-                  Đăng xuất
-                </button>
-              </div>
+              <details
+                className="km-account-menu"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape' || !event.currentTarget.open) return;
+                  event.currentTarget.open = false;
+                  event.currentTarget.querySelector('summary').focus();
+                }}
+              >
+                <summary>
+                  <span className="km-account-avatar" aria-hidden="true">{(user.fullName || user.email || '?').charAt(0).toUpperCase()}</span>
+                  <span className="km-user-name">{user.fullName || user.email}</span>
+                </summary>
+                <div className="km-account-menu-links">
+                  {user.role === 'CUSTOMER' ? (
+                    <>
+                      <Link to="/customer/profile" onClick={closeAccountMenu}>Hồ sơ cá nhân</Link>
+                      <Link to="/customer/orders" onClick={closeAccountMenu}>Đơn hàng của tôi</Link>
+                    </>
+                  ) : (
+                    <Link to={user.role === 'ADMIN' ? '/admin' : '/staff'} onClick={closeAccountMenu}>
+                      {user.role === 'ADMIN' ? 'Trang quản trị' : 'Khu vực nhân viên'}
+                    </Link>
+                  )}
+                  <button type="button" onClick={(event) => { closeAccountMenu(event); handleLogout(); }}>
+                    Đăng xuất
+                  </button>
+                </div>
+              </details>
             )}
           </div>
         </div>

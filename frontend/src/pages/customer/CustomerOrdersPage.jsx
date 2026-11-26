@@ -13,6 +13,8 @@ import {
 } from '../../utils/orderLabels';
 import '../../styles/auth.css';
 
+const STATUS_FILTER_LABELS = ['Đang xử lý', 'Đang giao', 'Hoàn thành', 'Đã hủy'];
+
 function statusBadgeClass(status) {
   if (status === 'COMPLETED') return 'km-badge km-badge--success';
   if (status === 'CANCELLED') return 'km-badge km-badge--danger';
@@ -53,10 +55,19 @@ export default function CustomerOrdersPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <h1 style={{ fontSize: 'var(--text-4xl)', fontWeight: 600, margin: 0 }}>
+    <div className="km-order-list">
+      <h1 className="km-page-title">
         Đơn hàng của tôi
       </h1>
+      <div>
+        <div className="km-order-filters" role="group" aria-label="Lọc theo trạng thái đơn hàng" aria-describedby="order-filter-hint">
+          <button type="button" className="km-btn km-btn-soft" aria-pressed="true">Tất cả</button>
+          {STATUS_FILTER_LABELS.map((label) => (
+            <button key={label} type="button" className="km-btn km-btn-ghost" disabled>{label}</button>
+          ))}
+        </div>
+        <p id="order-filter-hint" className="km-field-hint">Bộ lọc trạng thái đang được phát triển.</p>
+      </div>
 
       {error ? (
         <ErrorState
@@ -78,35 +89,58 @@ export default function CustomerOrdersPage() {
         />
       ) : (
         <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div className="km-order-cards">
             {result.content.map((order) => (
-              <article key={order.id} className="km-panel" style={{ padding: 'var(--space-6)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <article key={order.id} className="km-panel km-order-card">
+                <div className="km-order-card-row">
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 'var(--text-lg)' }}>
+                    <div className="km-order-code">
                       {order.orderCode}
                     </div>
                     <div className="km-field-hint">
                       Ngày đặt: {formatDate(order.orderDate)} • {paymentMethodLabels[order.paymentMethod] || order.paymentMethod}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="km-order-badges">
                     <span className={statusBadgeClass(order.status)}>
                       {orderStatusLabels[order.status] || order.status}
                     </span>
-                    <span className={order.paymentStatus === 'PAID' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
-                      {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}
-                    </span>
+                    {order.status !== 'CANCELLED' && (
+                      <span className={order.paymentStatus === 'PAID' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
+                        {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', paddingTop: '8px', borderTop: '1px solid var(--color-border-subtle)' }}>
-                  <div style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>
+                <div className="km-order-preview">
+                  <div className="km-order-preview-thumb" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <div>
+                    <strong>Sản phẩm trong đơn</strong>
+                    <p className="km-field-hint">Xem tên và số lượng trong chi tiết đơn hàng.</p>
+                  </div>
+                </div>
+
+                <div className="km-order-card-row km-order-card-footer">
+                  <div className="km-order-total">
                     {formatVND(order.totalAmount)}
                   </div>
-                  <Link to={`/customer/orders/${order.id}`} className="km-btn km-btn-soft">
-                    Xem chi tiết đơn hàng
-                  </Link>
+                  <div className="km-order-actions">
+                    {order.status === 'COMPLETED' && (
+                      <span className="km-order-rebuy">
+                        <button type="button" className="km-btn km-btn-ghost" disabled aria-describedby={`rebuy-${order.id}`}>Mua lại</button>
+                        <small id={`rebuy-${order.id}`}>Sắp có</small>
+                      </span>
+                    )}
+                    <Link to={`/customer/orders/${order.id}`} className="km-btn km-btn-soft">
+                      Xem chi tiết
+                    </Link>
+                  </div>
                 </div>
               </article>
             ))}

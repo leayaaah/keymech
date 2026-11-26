@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import authApi from '../../api/authApi';
 import userApi from '../../api/userApi';
@@ -20,6 +19,7 @@ export function CustomerProfilePage() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
+  const [savedProfile, setSavedProfile] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,6 +37,11 @@ export function CustomerProfilePage() {
         setPhone(data?.phone || '');
         setAddress(data?.address || '');
         setEmail(data?.email || '');
+        setSavedProfile({
+          fullName: data?.fullName?.trim() || '',
+          phone: data?.phone?.trim() || null,
+          address: data?.address?.trim() || null,
+        });
         setError('');
       })
       .catch((err) => {
@@ -52,6 +57,13 @@ export function CustomerProfilePage() {
       active = false;
     };
   }, [reloadKey]);
+
+  const profile = {
+    fullName: fullName.trim(),
+    phone: phone.trim() || null,
+    address: address.trim() || null,
+  };
+  const hasChanges = savedProfile && Object.keys(profile).some((key) => profile[key] !== savedProfile[key]);
 
   const validate = () => {
     const next = {};
@@ -70,21 +82,23 @@ export function CustomerProfilePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (saving || !hasChanges || !validate()) return;
 
     setSaving(true);
     try {
-      await userApi.updateProfile({
-        fullName: fullName.trim(),
-        phone: phone.trim() || null,
-        address: address.trim() || null,
-      });
+      await userApi.updateProfile(profile);
+      setSavedProfile(profile);
       const refreshed = await refreshUser();
       if (refreshed) {
         setFullName(refreshed.fullName || '');
         setPhone(refreshed.phone || '');
         setAddress(refreshed.address || '');
         setEmail(refreshed.email || '');
+        setSavedProfile({
+          fullName: refreshed.fullName?.trim() || '',
+          phone: refreshed.phone?.trim() || null,
+          address: refreshed.address?.trim() || null,
+        });
       }
       toast.success('Thông tin tài khoản của bạn đã được lưu an toàn.');
     } catch (err) {
@@ -115,7 +129,7 @@ export function CustomerProfilePage() {
   return (
     <>
       <div>
-        <h1 className="km-account-heading">Hồ sơ cá nhân</h1>
+        <h1 className="km-page-title">Hồ sơ cá nhân</h1>
         <p className="km-auth-subtitle">Quản lý thông tin và địa chỉ giao hàng của bạn.</p>
       </div>
 
@@ -136,23 +150,24 @@ export function CustomerProfilePage() {
                 setFullName(e.target.value);
                 if (fieldErrors.fullName) setFieldErrors((p) => ({ ...p, fullName: '' }));
               }}
-              placeholder="Nguyễn Minh Anh"
+              autoComplete="name"
             />
             {fieldErrors.fullName && <p className="km-field-error">{fieldErrors.fullName}</p>}
           </div>
 
           <div className="km-field">
             <label htmlFor="profile-email" className="km-label">
-              Email • chỉ đọc
+              Email
             </label>
             <input
               id="profile-email"
               type="email"
               readOnly
+              aria-describedby="profile-email-hint"
               className="km-input km-input--readonly"
               value={email}
             />
-            <p className="km-field-hint">Email được dùng để đăng nhập và nhận thông báo.</p>
+            <p id="profile-email-hint" className="km-field-hint">Chỉ đọc. Email dùng để đăng nhập và nhận thông báo.</p>
           </div>
         </div>
 
@@ -169,7 +184,7 @@ export function CustomerProfilePage() {
               setPhone(e.target.value);
               if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: '' }));
             }}
-            placeholder="0901234567"
+            autoComplete="tel"
           />
           {fieldErrors.phone && <p className="km-field-error">{fieldErrors.phone}</p>}
         </div>
@@ -184,28 +199,17 @@ export function CustomerProfilePage() {
             className="km-input"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="123 Nguyễn Văn Linh, Hải Châu, Đà Nẵng"
+            autoComplete="street-address"
           />
         </div>
 
         <div>
-          <button type="submit" className="km-btn km-btn-primary" disabled={saving}>
+          <button type="submit" className="km-btn km-btn-primary" disabled={saving || !hasChanges}>
             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
           </button>
         </div>
       </form>
 
-      <div className="km-account-card">
-        <h2 style={{ fontSize: 'var(--text-lg)' }}>Bảo mật tài khoản</h2>
-        <p className="km-auth-subtitle">
-          Đổi mật khẩu định kỳ để bảo vệ thông tin và lịch sử mua hàng.
-        </p>
-        <div>
-          <Link to="/customer/change-password" className="km-btn km-btn-soft">
-            Đổi mật khẩu
-          </Link>
-        </div>
-      </div>
     </>
   );
 }

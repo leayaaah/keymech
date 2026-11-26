@@ -139,7 +139,7 @@ export function CustomerCustomRequestsPage() {
   return (
     <>
       <div>
-        <h1 className="km-account-heading">Custom phím</h1>
+        <h1 className="km-page-title">Custom phím</h1>
         <p className="km-auth-subtitle">
           Cùng KeyMech tạo nên bộ bàn phím mang dấu ấn riêng của bạn.
         </p>

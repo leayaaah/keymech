@@ -67,7 +67,7 @@ export function ChangePasswordPage() {
   return (
     <>
       <div>
-        <h1 className="km-account-heading">Đổi mật khẩu</h1>
+        <h1 className="km-page-title">Đổi mật khẩu</h1>
         <p className="km-auth-subtitle">Giữ tài khoản an toàn với mật khẩu mạnh.</p>
       </div>
 

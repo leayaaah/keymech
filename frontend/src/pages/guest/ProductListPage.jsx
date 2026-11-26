@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import formatVND from '../../utils/formatVND';
 import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
@@ -29,10 +30,20 @@ const BRANDS = [
   'Filco',
 ];
 
-const LAYOUTS = ['60%', '65%', '75%', 'TKL', 'Full-size'];
+const LAYOUTS = ['60%', '65%', '75%', 'TKL', 'Fullsize'];
+const FILTER_KEYS = ['keyword', 'categoryId', 'brand', 'layout', 'minPrice', 'maxPrice', 'sort'];
+const supportsLayout = (categoryId) => !categoryId || categoryId === '1' || categoryId === '5';
+const validPrice = (value) => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0);
+
+function readFilters(searchParams) {
+  const filters = Object.fromEntries(FILTER_KEYS.map((key) => [key, searchParams.get(key) || '']));
+  if (!supportsLayout(filters.categoryId)) filters.layout = '';
+  if (filters.layout === 'Full-size') filters.layout = 'Fullsize';
+  return filters;
+}
 
 const SORT_OPTIONS = [
-  { id: '', name: 'Sắp xếp: Mới nhất' },
+  { id: '', name: 'Sắp xếp: Mặc định' },
   { id: 'price-asc', name: 'Giá tăng dần' },
   { id: 'price-desc', name: 'Giá giảm dần' },
   { id: 'name-asc', name: 'Tên A–Z' },
@@ -44,32 +55,25 @@ const SORT_OPTIONS = [
 export function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [page, setPage] = useState(0);
+  const query = searchParams.toString();
+  const pageParam = Number(searchParams.get('page'));
+  const page = Number.isSafeInteger(pageParam) && pageParam >= 0 ? pageParam : 0;
+  const applied = readFilters(searchParams);
+
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
+  const [draft, setDraft] = useState(null);
+  const { keyword, minPrice, maxPrice } = draft?.query === query ? draft : applied;
+  const { categoryId, brand, layout, sort } = applied;
+  const [priceError, setPriceError] = useState(null);
 
-  // Filter draft state (applied when clicking "Áp dụng")
-  const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
-  const [categoryId, setCategoryId] = useState(searchParams.get('categoryId') || '');
-  const [brand, setBrand] = useState(searchParams.get('brand') || '');
-  const [layout, setLayout] = useState(searchParams.get('layout') || '');
-  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
-  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
-  const [sort, setSort] = useState(searchParams.get('sort') || '');
-
-  // Applied filter state
-  const [applied, setApplied] = useState({
-    keyword: searchParams.get('keyword') || '',
-    categoryId: searchParams.get('categoryId') || '',
-    brand: searchParams.get('brand') || '',
-    layout: searchParams.get('layout') || '',
-    minPrice: searchParams.get('minPrice') || '',
-    maxPrice: searchParams.get('maxPrice') || '',
-    sort: searchParams.get('sort') || '',
-  });
+  function updateDraft(key, value) {
+    setDraft({ query, keyword, minPrice, maxPrice, [key]: value });
+    setPriceError(null);
+  }
 
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedQuery, setLoadedQuery] = useState(null);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -78,13 +82,9 @@ export function ProductListPage() {
     let ignore = false;
 
     const params = { page, size: PAGE_SIZE };
-    if (applied.keyword) params.keyword = applied.keyword;
-    if (applied.categoryId) params.categoryId = applied.categoryId;
-    if (applied.brand) params.brand = applied.brand;
-    if (applied.layout) params.layout = applied.layout;
-    if (applied.minPrice) params.minPrice = applied.minPrice;
-    if (applied.maxPrice) params.maxPrice = applied.maxPrice;
-    if (applied.sort) params.sort = applied.sort;
+    for (const [key, value] of Object.entries(readFilters(new URLSearchParams(query)))) {
+      if (value) params[key] = value;
+    }
 
     productApi
       .list(params)
@@ -102,74 +102,60 @@ export function ProductListPage() {
         }
       })
       .finally(() => {
-        if (!ignore) setLoading(false);
+        if (!ignore) setLoadedQuery({ query, reloadKey });
       });
 
     return () => {
       ignore = true;
     };
-  }, [page, applied, reloadKey]);
+  }, [page, query, reloadKey]);
 
-  const applyFilters = (next = {}) => {
-    const merged = {
-      keyword,
-      categoryId,
-      brand,
-      layout,
-      minPrice,
-      maxPrice,
-      sort,
-      ...next,
-    };
-    setLoading(true);
-    setApplied(merged);
-    setPage(0);
-    const qs = {};
-    Object.entries(merged).forEach(([k, v]) => {
-      if (v) qs[k] = v;
-    });
-    setSearchParams(qs);
-    setMobileFilterOpen(false);
-  };
+  const loading = loadedQuery?.query !== query || loadedQuery?.reloadKey !== reloadKey;
 
-  const handleReset = () => {
-    setKeyword('');
-    setCategoryId('');
-    setBrand('');
-    setLayout('');
-    setMinPrice('');
-    setMaxPrice('');
-    setSort('');
-    setLoading(true);
-    setApplied({
-      keyword: '',
-      categoryId: '',
-      brand: '',
-      layout: '',
-      minPrice: '',
-      maxPrice: '',
-      sort: '',
-    });
-    setPage(0);
-    setSearchParams({});
-  };
+  function navigateFilters(filters, nextPage = 0, draftOverrides = null) {
+    const next = new URLSearchParams();
+    for (const key of FILTER_KEYS) {
+      if (filters[key]) next.set(key, filters[key]);
+    }
+    if (!supportsLayout(filters.categoryId)) next.delete('layout');
+    if (nextPage > 0) next.set('page', String(nextPage));
+    setDraft(draftOverrides ? { query: next.toString(), keyword, minPrice, maxPrice, ...draftOverrides } : null);
+    setPriceError(null);
+    setSearchParams(next);
+  }
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    applyFilters();
-  };
+  function handlePriceSubmit(event) {
+    event.preventDefault();
+    if (event.currentTarget.querySelector(':invalid') || !validPrice(minPrice) || !validPrice(maxPrice) ||
+        (minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice))) {
+      setPriceError(query);
+      return;
+    }
+    navigateFilters({ ...applied, minPrice, maxPrice }, 0, {});
+  }
 
-  const handleSortChange = (e) => {
-    const nextSort = e.target.value;
-    setSort(nextSort);
-    applyFilters({ sort: nextSort });
-  };
+  function handleReset() {
+    navigateFilters({});
+  }
 
-  const handlePageChange = (nextPage) => {
-    setLoading(true);
-    setPage(nextPage);
+  function handleSearchSubmit(event) {
+    event.preventDefault();
+    navigateFilters({ ...applied, keyword: keyword.trim() }, 0, { keyword: keyword.trim() });
+  }
+
+  function handlePageChange(nextPage) {
+    navigateFilters(applied, nextPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }
+
+  const chips = [
+    ['keyword', applied.keyword],
+    ['categoryId', CATEGORIES.find(({ id }) => id === categoryId)?.name],
+    ['brand', brand],
+    ['layout', layout === 'Fullsize' ? 'Full-size' : layout],
+    ['minPrice', applied.minPrice && `Từ ${formatVND(Number(applied.minPrice))}`],
+    ['maxPrice', applied.maxPrice && `Đến ${formatVND(Number(applied.maxPrice))}`],
+  ].filter(([, label]) => label);
 
   const totalPagesArr = Array.from({ length: totalPages }, (_, i) => i);
   const visiblePages = totalPagesArr.filter(
@@ -185,9 +171,9 @@ export function ProductListPage() {
       </nav>
 
       <div className="km-catalog-header">
-        <h1>Tìm chiếc phím dành cho bạn</h1>
-        <p className="km-catalog-subtitle">
-          {loading ? 'Đang tải danh sách sản phẩm...' : `Khám phá ${totalElements} sản phẩm từ các thương hiệu yêu thích.`}
+        <h1 className="km-page-title">Tìm chiếc phím dành cho bạn</h1>
+        <p className="km-catalog-subtitle" aria-live="polite">
+          {loading ? 'Đang tải danh sách sản phẩm...' : error ? '' : `${totalElements} sản phẩm`}
         </p>
       </div>
 
@@ -204,7 +190,7 @@ export function ProductListPage() {
             aria-label="Tìm tên sản phẩm"
             placeholder="Tìm tên sản phẩm..."
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(e) => updateDraft('keyword', e.target.value)}
           />
         </div>
 
@@ -212,7 +198,7 @@ export function ProductListPage() {
           className="km-sort-select"
           aria-label="Sắp xếp sản phẩm"
           value={sort}
-          onChange={handleSortChange}
+          onChange={(e) => navigateFilters({ ...applied, sort: e.target.value }, 0, {})}
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.id} value={opt.id}>
@@ -224,6 +210,8 @@ export function ProductListPage() {
         <button
           type="button"
           className="km-btn km-btn-soft km-mobile-filter-toggle"
+          aria-expanded={mobileFilterOpen}
+          aria-controls="catalog-filters"
           onClick={() => setMobileFilterOpen((o) => !o)}
         >
           {mobileFilterOpen ? 'Ẩn bộ lọc' : 'Bộ lọc'}
@@ -233,6 +221,7 @@ export function ProductListPage() {
       <div className="km-catalog-body">
         {/* Filter Sidebar */}
         <aside
+          id="catalog-filters"
           className={`km-filter-sidebar ${mobileFilterOpen ? '' : 'km-filter-sidebar--hidden'}`}
           aria-label="Bộ lọc sản phẩm"
         >
@@ -240,13 +229,13 @@ export function ProductListPage() {
 
           <div className="km-filter-group">
             <span className="km-filter-group-label">Danh mục</span>
-            {CATEGORIES.map((c) => (
+            {[{ id: '', name: 'Tất cả' }, ...CATEGORIES].map((c) => (
               <label key={c.id} className="km-filter-option">
                 <input
                   type="radio"
                   name="categoryId"
                   checked={categoryId === c.id}
-                  onChange={() => setCategoryId(categoryId === c.id ? '' : c.id)}
+                  onChange={() => navigateFilters({ ...applied, categoryId: c.id }, 0, {})}
                 />
                 <span>{c.name}</span>
               </label>
@@ -261,7 +250,7 @@ export function ProductListPage() {
               id="filter-brand"
               className="km-filter-input"
               value={brand}
-              onChange={(e) => setBrand(e.target.value)}
+              onChange={(e) => navigateFilters({ ...applied, brand: e.target.value }, 0, {})}
             >
               <option value="">Tất cả thương hiệu</option>
               {BRANDS.map((b) => (
@@ -272,64 +261,78 @@ export function ProductListPage() {
             </select>
           </div>
 
-          <div className="km-filter-group">
-            <span className="km-filter-group-label">Layout</span>
-            <div className="km-filter-layout-grid">
-              {LAYOUTS.map((l) => (
-                <label key={l} className="km-filter-option">
-                  <input
-                    type="radio"
-                    name="layout"
-                    checked={layout === l}
-                    onChange={() => setLayout(layout === l ? '' : l)}
-                  />
-                  <span>{l}</span>
-                </label>
-              ))}
+          {supportsLayout(categoryId) && (
+            <div className="km-filter-group">
+              <span className="km-filter-group-label">Layout</span>
+              <div className="km-filter-layout-grid">
+                {['', ...LAYOUTS].map((l) => (
+                  <label key={l} className="km-filter-option">
+                    <input
+                      type="radio"
+                      name="layout"
+                      checked={layout === l}
+                      onChange={() => navigateFilters({ ...applied, layout: l }, 0, {})}
+                    />
+                    <span>{l === 'Fullsize' ? 'Full-size' : l || 'Tất cả'}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="km-filter-group">
-            <span className="km-filter-group-label">Khoảng giá (₫)</span>
-            <input
-              type="number"
-              min="0"
-              className="km-filter-input"
-              aria-label="Giá tối thiểu"
-              placeholder="Từ 500.000"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-            />
-            <input
-              type="number"
-              min="0"
-              className="km-filter-input"
-              aria-label="Giá tối đa"
-              placeholder="Đến 4.000.000"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
-          </div>
-
-          <div className="km-filter-actions">
-            <button type="button" className="km-btn km-btn-primary km-btn-full" onClick={() => applyFilters()}>
-              Áp dụng
-            </button>
-            <button type="button" className="km-btn km-btn-soft km-btn-full" onClick={handleReset}>
-              Đặt lại
-            </button>
-          </div>
+          <form className="km-filter-group" onSubmit={handlePriceSubmit} noValidate>
+            <span className="km-filter-group-label">Khoảng giá</span>
+            {[
+              ['minPrice', 'Giá tối thiểu', '500000', minPrice],
+              ['maxPrice', 'Giá tối đa', '4000000', maxPrice],
+            ].map(([key, label, placeholder, value]) => (
+              <label className="km-price-field" key={key}>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="km-filter-input"
+                  aria-label={label}
+                  aria-invalid={priceError === query}
+                  aria-describedby={priceError === query ? 'catalog-price-error' : undefined}
+                  placeholder={placeholder}
+                  value={value}
+                  onChange={(event) => updateDraft(key, event.target.value)}
+                />
+                <span aria-hidden="true">₫</span>
+              </label>
+            ))}
+            {priceError === query && (
+              <p id="catalog-price-error" className="km-field-error" role="alert">
+                Giá phải từ 0 ₫ và giá tối thiểu không được lớn hơn giá tối đa.
+              </p>
+            )}
+            <button type="submit" className="km-btn km-btn-primary km-btn-full">Áp dụng giá</button>
+          </form>
+          <button type="button" className="km-btn km-btn-soft km-btn-full" onClick={handleReset}>
+            Đặt lại
+          </button>
         </aside>
 
         {/* Product Grid */}
         <section>
+          {chips.length > 0 && (
+            <ul className="km-filter-chips" aria-label="Bộ lọc đang áp dụng">
+              {chips.map(([key, label]) => (
+                <li key={key}>
+                  <button type="button" aria-label={'Xóa bộ lọc ' + label} onClick={() => navigateFilters({ ...applied, [key]: '' })}>
+                    {label} <span aria-hidden="true">×</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {loading && <Loading message="Đang tải sản phẩm..." />}
           {!loading && error && (
             <ErrorState
               title="Lỗi tải sản phẩm"
               message={error}
               onRetry={() => {
-                setLoading(true);
                 setError(null);
                 setReloadKey((k) => k + 1);
               }}

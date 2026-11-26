@@ -8,7 +8,7 @@ export const orderStatusLabels = {
 
 export const paymentMethodLabels = {
   COD: 'Thanh toán khi nhận hàng (COD)',
-  BANK_TRANSFER: 'Chuyển khoản (mô phỏng)',
+  BANK_TRANSFER: 'Chuyển khoản ngân hàng',
 };
 
 export const paymentStatusLabels = {

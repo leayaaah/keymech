@@ -125,7 +125,7 @@ export function CustomerCustomRequestDetailPage() {
       </Link>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 className="km-account-heading" style={{ fontSize: 'var(--text-2xl)' }}>
+        <h1 className="km-page-title">
           {req.requestCode || `CUS-${req.id}`}
         </h1>
         <span className={customBadgeClass(req.status)}>

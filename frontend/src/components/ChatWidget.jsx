@@ -25,12 +25,6 @@ export function ChatWidget() {
   const endRef = useRef(null);
 
   useEffect(() => {
-    const onOpen = () => setOpen(true);
-    window.addEventListener('keymech:open-chat', onOpen);
-    return () => window.removeEventListener('keymech:open-chat', onOpen);
-  }, []);
-
-  useEffect(() => {
     if (!open || loadedHistory.current) return;
     loadedHistory.current = true;
     chatApi

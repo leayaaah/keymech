@@ -82,7 +82,7 @@ function OrderDetail({ id, success }) {
             <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <h1 className="km-page-heading">Đặt hàng thành công!</h1>
+        <h1 className="km-page-title">Đặt hàng thành công!</h1>
         <p className="km-auth-subtitle" style={{ fontSize: 'var(--text-lg)' }}>
           Cảm ơn {order.receiverName} đã chọn KeyMech. Chúng tôi sẽ sớm xác nhận đơn hàng của bạn.
         </p>
@@ -95,8 +95,10 @@ function OrderDetail({ id, success }) {
             </div>
           ))}
           <div>
-            {paymentMethodLabels[order.paymentMethod] || order.paymentMethod} •{' '}
-            {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}
+            {paymentMethodLabels[order.paymentMethod] || order.paymentMethod}
+            {order.status !== 'CANCELLED' && (
+              <> • {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}</>
+            )}
           </div>
           <div>
             {order.receiverName} • {order.receiverPhone}
@@ -124,7 +126,7 @@ function OrderDetail({ id, success }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: 'var(--text-3xl)', margin: '0 0 4px 0' }}>
+          <h1 className="km-page-title">
             Đơn hàng {order.orderCode}
           </h1>
           <p className="km-auth-subtitle">Đặt lúc {formatDateTime(order.orderDate)}</p>
@@ -133,9 +135,11 @@ function OrderDetail({ id, success }) {
           <span className={statusBadgeClass(order.status)}>
             {orderStatusLabels[order.status] || order.status}
           </span>
-          <span className={order.paymentStatus === 'PAID' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
-            {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}
-          </span>
+          {order.status !== 'CANCELLED' && (
+            <span className={order.paymentStatus === 'PAID' ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
+              {paymentStatusLabels[order.paymentStatus] || order.paymentStatus}
+            </span>
+          )}
         </div>
       </div>
 
