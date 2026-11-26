@@ -421,3 +421,153 @@ img {
     padding: var(--space-8) var(--space-4);
   }
 }
+
+/* Chat Widget (Desktop & Mobile 360px) */
+.km-chat-panel {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 95;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  height: 520px;
+  max-height: calc(100vh - 96px);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.km-chat-header {
+  background-color: var(--color-navy);
+  color: var(--color-text-on-dark);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.km-chat-close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-on-dark);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.km-chat-notice {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+  font-size: 11px;
+  padding: 8px 12px;
+  line-height: 1.4;
+}
+
+.km-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background-color: var(--color-surface-subtle);
+}
+
+.km-chat-bubble {
+  max-width: 85%;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.km-chat-bubble--user {
+  align-self: flex-end;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-dark);
+}
+
+.km-chat-bubble--bot {
+  align-self: flex-start;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.km-chat-products {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.km-chat-product-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.km-chat-product-card:hover {
+  border-color: var(--color-primary);
+}
+
+.km-chat-error {
+  background-color: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+  padding: 8px 12px;
+}
+
+.km-chat-suggestions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+}
+
+.km-chat-chip {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.km-chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+}
+
+.km-chat-input {
+  flex: 1;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+@media (max-width: 480px) {
+  .km-chat-panel {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+    height: calc(100vh - 88px);
+  }
+}

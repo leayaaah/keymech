@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { cartApi } from '../api/cartApi';
-import { toast } from '../utils/toast';
+import ChatWidget from '../components/ChatWidget';
 
 /**
  * Layout chính cho cửa hàng (Guest & Customer).
@@ -135,18 +135,7 @@ export function GuestLayout() {
         <Outlet />
       </main>
 
-      {showCartAndChatbot && (
-        <button
-          type="button"
-          className="km-chat-fab"
-          aria-label="Mở cửa sổ Chatbot tư vấn"
-          onClick={() => toast.info('Tính năng Chatbot tư vấn sẽ được mở ở Lô 6.')}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      )}
+      {showCartAndChatbot && <ChatWidget />}
 
       <footer className="km-footer">
         <div className="km-footer-inner">

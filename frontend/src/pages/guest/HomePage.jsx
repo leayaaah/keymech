@@ -6,7 +6,6 @@ import ProductCard from '../../components/ProductCard';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
 import EmptyState from '../../components/EmptyState';
-import { toast } from '../../utils/toast';
 import '../../styles/shop.css';
 
 const HOME_CATEGORIES = [
@@ -160,7 +159,7 @@ export function HomePage() {
           <button
             type="button"
             className="km-btn km-btn-primary"
-            onClick={() => toast.info('Tính năng Chatbot tư vấn sẽ được mở ở Lô 6.')}
+            onClick={() => window.dispatchEvent(new CustomEvent('keymech:open-chat'))}
           >
             Tư vấn ngay
           </button>
