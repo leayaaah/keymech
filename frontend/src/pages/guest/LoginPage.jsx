@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../../utils/toast';
+import '../../styles/auth.css';
 
 /**
- * Trang Đăng nhập hệ thống KeyMech.
+ * Trang Đăng nhập hệ thống KeyMech (Figma frame 3:198).
  * Kết nối API POST /api/auth/login.
  */
 export function LoginPage() {
@@ -19,37 +20,18 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
 
-  // Nếu người dùng đã đăng nhập, hiển thị thông báo chuyển tiếp
   if (user) {
     return (
-      <div
-        style={{
-          maxWidth: '440px',
-          margin: '3rem auto',
-          padding: '2rem',
-          backgroundColor: '#ffffff',
-          borderRadius: '8px',
-          textAlign: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}
-      >
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: '#111827' }}>
-          Bạn đã đăng nhập!
-        </h2>
-        <p style={{ color: '#4b5563', marginBottom: '1.5rem', fontSize: '0.925rem' }}>
-          Tài khoản hiện tại: <strong>{user.fullName || user.email}</strong> ({user.role})
-        </p>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+      <div className="km-auth-wrap">
+        <div className="km-auth-card" style={{ textAlign: 'center', alignItems: 'center' }}>
+          <p className="km-auth-brand">KeyMech</p>
+          <h1 className="km-auth-title">Bạn đã đăng nhập</h1>
+          <p className="km-auth-subtitle">
+            Tài khoản hiện tại: <strong>{user.fullName || user.email}</strong> ({user.role})
+          </p>
           <Link
             to={user.role === 'ADMIN' ? '/admin' : user.role === 'STAFF' ? '/staff' : '/'}
-            style={{
-              padding: '0.6rem 1.25rem',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontWeight: 500,
-            }}
+            className="km-btn km-btn-primary"
           >
             Đi đến trang chính
           </Link>
@@ -85,14 +67,17 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       const loggedUser = await login(email.trim(), password);
+      window.dispatchEvent(new CustomEvent('keymech:cart-updated'));
       toast.success('Đăng nhập thành công!');
 
-      // Điều hướng theo trạng thái chuyển trang trước đó hoặc theo vai trò
       const redirect = new URLSearchParams(location.search).get('redirect');
-      const isOrderPath = redirect === '/checkout'
-        || /^\/customer\/orders(?:\/\d+(?:\/success)?)?$/.test(redirect ?? '');
-      const from = location.state?.from?.pathname
-        || (loggedUser.role === 'CUSTOMER' && isOrderPath ? redirect : null);
+      const isOrderPath =
+        redirect === '/checkout' ||
+        /^\/customer\/orders(?:\/\d+(?:\/success)?)?$/.test(redirect ?? '');
+      const from =
+        location.state?.from?.pathname ||
+        (loggedUser.role === 'CUSTOMER' && isOrderPath ? redirect : null);
+
       if (from && from !== '/login') {
         navigate(from, { replace: true });
       } else if (loggedUser.role === 'ADMIN') {
@@ -104,8 +89,7 @@ export function LoginPage() {
       }
     } catch (err) {
       const message =
-        err.response?.data?.message ||
-        'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.';
+        err.response?.data?.message || 'Email hoặc mật khẩu không đúng';
       setServerError(message);
     } finally {
       setSubmitting(false);
@@ -113,195 +97,95 @@ export function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        maxWidth: '440px',
-        margin: '2rem auto',
-        padding: '2rem',
-        backgroundColor: '#ffffff',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      }}
-    >
-      <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-        <h1
-          style={{
-            fontSize: '1.65rem',
-            fontWeight: 800,
-            color: '#111827',
-            margin: '0 0 0.5rem 0',
-          }}
-        >
-          Đăng nhập KeyMech
-        </h1>
-        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>
-          Truy cập tài khoản để mua sắm và theo dõi đơn hàng
-        </p>
-      </div>
+    <div className="km-auth-wrap">
+      <div className="km-auth-card">
+        <p className="km-auth-brand">KeyMech</p>
+        <h1 className="km-auth-title">Chào mừng trở lại</h1>
+        <p className="km-auth-subtitle">Đăng nhập để tiếp tục hành trình đam mê.</p>
 
-      {serverError && (
-        <div
-          role="alert"
-          style={{
-            padding: '0.75rem 1rem',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            marginBottom: '1.25rem',
-          }}
-        >
-          {serverError}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} noValidate>
-        {/* Email field */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <label
-            htmlFor="login-email"
-            style={{
-              display: 'block',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              color: '#374151',
-              marginBottom: '0.35rem',
-            }}
-          >
-            Địa chỉ Email <span style={{ color: '#dc2626' }}>*</span>
-          </label>
-          <input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            placeholder="nhapemail@example.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-            }}
-            style={{
-              width: '100%',
-              padding: '0.65rem 0.85rem',
-              borderRadius: '6px',
-              border: `1px solid ${errors.email ? '#dc2626' : '#d1d5db'}`,
-              outline: 'none',
-              fontSize: '0.95rem',
-            }}
-          />
-          {errors.email && (
-            <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.25rem', margin: '0.25rem 0 0 0' }}>
-              {errors.email}
-            </p>
-          )}
-        </div>
-
-        {/* Password field */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '0.35rem',
-            }}
-          >
-            <label
-              htmlFor="login-password"
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: '#374151',
-              }}
-            >
-              Mật khẩu <span style={{ color: '#dc2626' }}>*</span>
+        <form className="km-form" onSubmit={handleSubmit} noValidate>
+          <div className="km-field">
+            <label htmlFor="login-email" className="km-label">
+              Email <span className="km-required">*</span>
             </label>
-          </div>
-          <div style={{ position: 'relative' }}>
             <input
-              id="login-password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              className={`km-input ${errors.email ? 'km-input--error' : ''}`}
+              placeholder="minhanh@example.com"
+              value={email}
               onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.password)
-                  setErrors((prev) => ({ ...prev, password: '' }));
-              }}
-              style={{
-                width: '100%',
-                padding: '0.65rem 2.5rem 0.65rem 0.85rem',
-                borderRadius: '6px',
-                border: `1px solid ${errors.password ? '#dc2626' : '#d1d5db'}`,
-                outline: 'none',
-                fontSize: '0.95rem',
+                setEmail(e.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
               }}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#6b7280',
-                fontSize: '1rem',
-                padding: '4px',
-              }}
-            >
-              {showPassword ? '👁️' : '🔒'}
-            </button>
+            {errors.email && <p className="km-field-error">{errors.email}</p>}
           </div>
-          {errors.password && (
-            <p style={{ color: '#dc2626', fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-              {errors.password}
-            </p>
+
+          <div className="km-field">
+            <label htmlFor="login-password" className="km-label">
+              Mật khẩu <span className="km-required">*</span>
+            </label>
+            <div className="km-password-wrap">
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                className={`km-input ${errors.password ? 'km-input--error' : ''}`}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                }}
+              />
+              <button
+                type="button"
+                className="km-password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  {showPassword ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M1 1l22 22" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
+            {errors.password && <p className="km-field-error">{errors.password}</p>}
+          </div>
+
+          {serverError && (
+            <div role="alert" className="km-alert-error">
+              {serverError}
+            </div>
           )}
-        </div>
 
-        {/* Submit button */}
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            backgroundColor: submitting ? '#93c5fd' : '#2563eb',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '1rem',
-            fontWeight: 600,
-            cursor: submitting ? 'not-allowed' : 'pointer',
-            transition: 'background-color 0.2s',
-          }}
-        >
-          {submitting ? 'Đang xác thực...' : 'Đăng nhập'}
-        </button>
-      </form>
+          <Link to="/forgot-password" className="km-auth-link km-auth-link--sm">
+            Quên mật khẩu?
+          </Link>
 
-      <div
-        style={{
-          marginTop: '1.5rem',
-          textAlign: 'center',
-          fontSize: '0.875rem',
-          color: '#4b5563',
-        }}
-      >
-        Chưa có tài khoản?{' '}
-        <Link
-          to="/register"
-          style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
-        >
-          Đăng ký ngay
+          <button type="submit" className="km-btn km-btn-primary km-btn-full" disabled={submitting}>
+            {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          </button>
+        </form>
+
+        <Link to="/register" className="km-auth-link">
+          Chưa có tài khoản? Đăng ký
         </Link>
+
+        <p className="km-auth-footer-note">
+          Giỏ hàng của bạn được giữ nguyên sau khi đăng nhập.
+        </p>
       </div>
     </div>
   );

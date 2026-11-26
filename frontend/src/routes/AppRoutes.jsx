@@ -16,6 +16,8 @@ import ProductDetailPage from '../pages/guest/ProductDetailPage';
 import CartPage from '../pages/guest/CartPage';
 import LoginPage from '../pages/guest/LoginPage';
 import RegisterPage from '../pages/guest/RegisterPage';
+import ForgotPasswordPage from '../pages/guest/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/guest/ResetPasswordPage';
 
 // Customer Pages
 import CustomerProfilePage from '../pages/customer/CustomerProfilePage';
@@ -61,6 +63,8 @@ export function AppRoutes() {
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Khu vực khách hàng cá nhân: Chỉ Customer */}
         <Route element={<ProtectedRoute roles={['CUSTOMER']} />}>

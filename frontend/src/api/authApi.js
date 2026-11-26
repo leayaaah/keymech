@@ -6,10 +6,6 @@ import axiosClient from './axiosClient';
 export const authApi = {
   /**
    * Đăng nhập hệ thống
-   * @param {Object} credentials
-   * @param {string} credentials.email
-   * @param {string} credentials.password
-   * @returns {Promise<Object>} Thông tin tài khoản trả về từ server
    */
   login(credentials) {
     return axiosClient.post('/auth/login', credentials);
@@ -17,13 +13,6 @@ export const authApi = {
 
   /**
    * Đăng ký tài khoản khách hàng mới (CUSTOMER)
-   * @param {Object} data
-   * @param {string} data.email
-   * @param {string} data.password
-   * @param {string} data.fullName
-   * @param {string} [data.phone]
-   * @param {string} [data.address]
-   * @returns {Promise<Object>}
    */
   register(data) {
     return axiosClient.post('/auth/register', data);
@@ -31,7 +20,6 @@ export const authApi = {
 
   /**
    * Lấy thông tin tài khoản hiện tại từ Session cookie
-   * @returns {Promise<Object>}
    */
   getMe() {
     return axiosClient.get('/auth/me');
@@ -39,21 +27,30 @@ export const authApi = {
 
   /**
    * Đăng xuất khỏi hệ thống
-   * @returns {Promise<void>}
    */
   logout() {
     return axiosClient.post('/auth/logout');
   },
 
   /**
-   * Đổi mật khẩu tài khoản đang đăng nhập
-   * @param {Object} passwords
-   * @param {string} passwords.oldPassword
-   * @param {string} passwords.newPassword
-   * @returns {Promise<Object>}
+   * Đổi mật khẩu tài khoản đang đăng nhập (chỉ Customer)
    */
   changePassword(passwords) {
     return axiosClient.put('/users/me/password', passwords);
+  },
+
+  /**
+   * Yêu cầu mã xác thực quên mật khẩu (6 chữ số, hiệu lực 10 phút)
+   */
+  forgotPassword({ email }) {
+    return axiosClient.post('/auth/forgot-password', { email });
+  },
+
+  /**
+   * Đặt lại mật khẩu bằng mã xác thực
+   */
+  resetPassword({ email, code, newPassword }) {
+    return axiosClient.post('/auth/reset-password', { email, code, newPassword });
   },
 };
 
