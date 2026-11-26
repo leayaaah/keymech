@@ -6,6 +6,7 @@ import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
 import { formatDateTime } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/portal.css';
@@ -43,7 +44,7 @@ export function StaffCustomRequestDetailPage() {
       })
       .catch((err) => {
         if (active) {
-          setError(err?.response?.data?.message || 'Không thể tải yêu cầu Custom.');
+          setError(getFeatureErrorMessage(err, 'Không thể tải yêu cầu Custom.'));
         }
       })
       .finally(() => {
@@ -70,7 +71,7 @@ export function StaffCustomRequestDetailPage() {
       setReq(updated);
       toast.success('Đã gửi báo giá cho khách hàng.');
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể gửi báo giá.');
+      toast.error(getFeatureErrorMessage(err, 'Không thể gửi báo giá.'));
     } finally {
       setBusy(false);
     }
@@ -92,7 +93,7 @@ export function StaffCustomRequestDetailPage() {
       setStatusNote('');
       toast.success(`Đã chuyển trạng thái sang "${customStatusLabels[nextStatus]}".`);
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể cập nhật trạng thái.');
+      toast.error(getFeatureErrorMessage(err, 'Không thể cập nhật trạng thái.'));
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@ import adminCategoryApi from '../../api/adminCategoryApi';
 import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/customer.css';
@@ -47,7 +48,7 @@ export function AdminCategoriesPage() {
       })
       .catch((err) => {
         if (active) {
-          setError(err?.response?.data?.message || 'Không thể tải danh sách danh mục.');
+          setError(getFeatureErrorMessage(err, 'Không thể tải danh sách danh mục.'));
         }
       })
       .finally(() => {
@@ -75,7 +76,7 @@ export function AdminCategoriesPage() {
       setLoading(true);
       setReloadKey((k) => k + 1);
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể lưu danh mục (tên hoặc slug có thể bị trùng).');
+      toast.error(getFeatureErrorMessage(err, 'Không thể lưu danh mục (tên hoặc slug có thể bị trùng).'));
     } finally {
       setSaving(false);
     }
@@ -102,7 +103,7 @@ export function AdminCategoriesPage() {
             `Không thể ẩn danh mục "${cat.name}" vì vẫn còn sản phẩm đang hiển thị.`
         );
       } else {
-        toast.error(err?.response?.data?.message || 'Không thể cập nhật trạng thái danh mục.');
+        toast.error(getFeatureErrorMessage(err, 'Không thể cập nhật trạng thái danh mục.'));
       }
     } finally {
       setSaving(false);

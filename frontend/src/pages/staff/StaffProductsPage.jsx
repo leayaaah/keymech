@@ -6,6 +6,7 @@ import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/portal.css';
@@ -36,7 +37,7 @@ export function StaffProductsPage() {
       })
       .catch((err) => {
         if (active) {
-          setError(err?.response?.data?.message || 'Không thể tải danh sách sản phẩm.');
+          setError(getFeatureErrorMessage(err, 'Không thể tải danh sách sản phẩm.'));
         }
       })
       .finally(() => {
@@ -62,7 +63,7 @@ export function StaffProductsPage() {
           : `Đã hiển thị lại sản phẩm "${product.name}".`
       );
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể đổi trạng thái hiển thị.');
+      toast.error(getFeatureErrorMessage(err, 'Không thể đổi trạng thái hiển thị.'));
     } finally {
       setTogglingId(null);
     }

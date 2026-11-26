@@ -6,6 +6,7 @@ import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
 import { formatDateTime } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/customer.css';
@@ -53,7 +54,7 @@ export function CustomerCustomRequestDetailPage() {
       })
       .catch((err) => {
         if (active) {
-          setError(err?.response?.data?.message || 'Không thể tải chi tiết yêu cầu Custom.');
+          setError(getFeatureErrorMessage(err, 'Không thể tải chi tiết yêu cầu Custom.'));
         }
       })
       .finally(() => {
@@ -80,7 +81,7 @@ export function CustomerCustomRequestDetailPage() {
         setQuoteChangedError(true);
         setModal(null);
       } else {
-        toast.error(err?.response?.data?.message || 'Không thể xác nhận báo giá.');
+        toast.error(getFeatureErrorMessage(err, 'Không thể xác nhận báo giá.'));
       }
     } finally {
       setActing(false);
@@ -98,7 +99,7 @@ export function CustomerCustomRequestDetailPage() {
       setModal(null);
       toast.success(isDecline ? 'Đã từ chối báo giá.' : 'Đã hủy yêu cầu Custom.');
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể thực hiện thao tác.');
+      toast.error(getFeatureErrorMessage(err, 'Không thể thực hiện thao tác.'));
     } finally {
       setActing(false);
     }

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import staffProductApi from '../../api/staffProductApi';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/portal.css';
@@ -75,7 +76,7 @@ export function StaffProductFormPage() {
         });
       })
       .catch((err) => {
-        if (active) setLoadError(err?.response?.data?.message || 'Không thể tải thông tin sản phẩm.');
+        if (active) setLoadError(getFeatureErrorMessage(err, 'Không thể tải thông tin sản phẩm.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -132,7 +133,7 @@ export function StaffProductFormPage() {
       toast.success(isEdit ? 'Đã cập nhật sản phẩm.' : 'Đã thêm sản phẩm mới.');
       navigate('/staff/products');
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể lưu sản phẩm.');
+      toast.error(getFeatureErrorMessage(err, 'Không thể lưu sản phẩm.'));
     } finally {
       setSubmitting(false);
     }

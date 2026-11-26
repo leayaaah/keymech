@@ -7,6 +7,7 @@ import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
 import { formatDate } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import '../../styles/auth.css';
 import '../../styles/portal.css';
 
@@ -39,7 +40,7 @@ export function StaffCustomRequestsPage() {
       })
       .catch((err) => {
         if (active) {
-          setError(err?.response?.data?.message || 'Không thể tải danh sách yêu cầu Custom.');
+          setError(getFeatureErrorMessage(err, 'Không thể tải danh sách yêu cầu Custom.'));
         }
       })
       .finally(() => {

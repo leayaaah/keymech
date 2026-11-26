@@ -8,6 +8,7 @@ import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
 import { formatDate } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/customer.css';
@@ -70,7 +71,7 @@ export function CustomerCustomRequestsPage() {
       })
       .catch((err) => {
         if (active) {
-          setError(err?.response?.data?.message || 'Không thể tải danh sách yêu cầu Custom.');
+          setError(getFeatureErrorMessage(err, 'Không thể tải danh sách yêu cầu Custom.'));
         }
       })
       .finally(() => {
@@ -129,7 +130,7 @@ export function CustomerCustomRequestsPage() {
         setReloadKey((k) => k + 1);
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể gửi yêu cầu Custom.');
+      toast.error(getFeatureErrorMessage(err, 'Không thể gửi yêu cầu Custom.'));
     } finally {
       setSubmitting(false);
     }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import adminCategoryApi from '../../api/adminCategoryApi';
+import Loading from '../../components/Loading';
+import ErrorState from '../../components/ErrorState';
+import { getFeatureErrorMessage } from '../../utils/apiError';
 import '../../styles/portal.css';
 
 /**
@@ -8,21 +11,32 @@ import '../../styles/portal.css';
  */
 export function AdminDashboardPage() {
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
     adminCategoryApi
       .getDashboard()
       .then((data) => {
-        if (active) setStats(data);
+        if (active) {
+          setStats(data);
+          setError('');
+        }
       })
-      .catch(() => {
-        // Backend dashboard chưa triển khai -> hiển thị thẻ điều hướng bình thường
+      .catch((err) => {
+        if (active) {
+          setError(getFeatureErrorMessage(err, 'Không thể tải thống kê tổng quan.'));
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <>
@@ -33,7 +47,21 @@ export function AdminDashboardPage() {
         </p>
       </div>
 
-      {stats && (
+      {loading && <Loading message="Đang tải thống kê tổng quan..." />}
+
+      {!loading && error && (
+        <ErrorState
+          title="Chưa thể tải thống kê tổng quan"
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setError('');
+            setReloadKey((k) => k + 1);
+          }}
+        />
+      )}
+
+      {!loading && !error && stats && (
         <div className="km-kpi-grid">
           <div className="km-kpi-card">
             <span className="km-kpi-label">Tổng đơn hàng</span>
@@ -76,7 +104,7 @@ export function AdminDashboardPage() {
           <span className="km-kpi-label">Phân loại</span>
           <strong style={{ fontSize: 'var(--text-xl)' }}>Quản lý danh mục</strong>
           <p className="km-field-hint">
-            Thêm, sửa và ẩn/hiện danh mục (chặn ẩn nếu còn sản phẩm đang hiển thị).
+            Thêm mới và ẩn/hiện danh mục (chặn ẩn nếu còn sản phẩm đang hiển thị).
           </p>
           <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
             <Link to="/admin/categories" className="km-btn km-btn-primary km-btn-sm">
