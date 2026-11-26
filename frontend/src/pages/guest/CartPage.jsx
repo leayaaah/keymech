@@ -59,6 +59,7 @@ export function CartPage() {
 
   const handleUpdateQty = async (item, nextQty) => {
     if (nextQty < 1) return;
+    if (typeof item.stockQuantity === 'number' && nextQty > item.stockQuantity) return;
     setUpdating(true);
     try {
       const updated = await cartApi.updateItem(item.productId, { quantity: nextQty });
@@ -66,7 +67,11 @@ export function CartPage() {
       setTotalAmount(updated?.totalAmount ?? 0);
       notifyCartChanged();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể cập nhật số lượng');
+      const status = err?.response?.status;
+      if (status !== 409) {
+        toast.error(err?.response?.data?.message || 'Không thể cập nhật số lượng');
+      }
+      loadCart();
     } finally {
       setUpdating(false);
     }
@@ -138,7 +143,10 @@ export function CartPage() {
               <span className="km-text-right">Thành tiền</span>
             </div>
 
-            {items.map((item) => (
+            {items.map((item) => {
+              const maxStock = typeof item.stockQuantity === 'number' ? item.stockQuantity : null;
+              const atLimit = maxStock !== null && item.quantity >= maxStock;
+              return (
               <div key={item.productId} className="km-cart-row">
                 <div className="km-cart-product">
                   <div className="km-cart-thumb">
@@ -198,19 +206,31 @@ export function CartPage() {
                       type="button"
                       className="km-qty-btn"
                       aria-label="Tăng số lượng"
-                      disabled={updating}
+                      disabled={updating || atLimit || item.available === false}
                       onClick={() => handleUpdateQty(item, item.quantity + 1)}
                     >
                       +
                     </button>
                   </div>
+                  {maxStock !== null && maxStock > 0 && (
+                    <div
+                      style={{
+                        fontSize: 'var(--text-xs)',
+                        color: atLimit ? 'var(--color-warning)' : 'var(--color-text-muted)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Tối đa {maxStock} sản phẩm
+                    </div>
+                  )}
                 </div>
 
                 <div className="km-text-right" style={{ fontWeight: 600 }}>
                   {formatVND(item.subtotal)}
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <div className="km-cart-footer-actions">
               <Link to="/products" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
