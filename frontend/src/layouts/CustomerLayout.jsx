@@ -1,82 +1,78 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import '../styles/customer.css';
+
+const NAV_ITEMS = [
+  { to: '/customer/orders', label: 'Đơn hàng của tôi' },
+  { to: '/customer/custom-requests', label: 'Custom phím' },
+  { to: '/customer/profile', label: 'Hồ sơ cá nhân' },
+  { to: '/customer/change-password', label: 'Đổi mật khẩu' },
+];
 
 /**
- * Layout cho khu vực khách hàng cá nhân (Customer).
+ * Layout khu vực tài khoản Customer (Figma frames 3:530–3:566 & 3:6588 mobile menu).
  */
 export function CustomerLayout() {
-  const navItems = [
-    { to: '/customer/profile', label: 'Thông tin cá nhân' },
-    { to: '/customer/orders', label: 'Lịch sử đơn hàng' },
-    { to: '/customer/custom-requests', label: 'Yêu cầu Custom' },
-    { to: '/customer/change-password', label: 'Đổi mật khẩu' },
-  ];
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const currentSection =
+    NAV_ITEMS.find((item) => location.pathname.startsWith(item.to))?.label || 'Tài khoản';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '1.5rem',
-        alignItems: 'start',
-      }}
-    >
-      {/* Sidebar menu */}
-      <aside
-        style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '8px',
-          padding: '1.25rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '1.1rem',
-            fontWeight: 700,
-            marginBottom: '1rem',
-            color: '#111827',
-          }}
-        >
-          Tài khoản của tôi
-        </h2>
-        <nav
-          aria-label="Menu tài khoản"
-          style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
-        >
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              style={({ isActive }) => ({
-                display: 'block',
-                padding: '0.65rem 0.85rem',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontSize: '0.925rem',
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? '#2563eb' : '#4b5563',
-                backgroundColor: isActive ? '#eff6ff' : 'transparent',
-              })}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+    <div className="km-account-wrap">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <nav className="km-breadcrumb" aria-label="Breadcrumb">
+          <Link to="/">Trang chủ</Link>
+          <span>/</span>
+          <span>Tài khoản</span>
+          <span>/</span>
+          <span>{currentSection}</span>
         </nav>
-      </aside>
 
-      {/* Main panel */}
-      <section
-        style={{
-          gridColumn: 'span 2',
-          backgroundColor: '#ffffff',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          minHeight: '400px',
-        }}
-      >
-        <Outlet />
-      </section>
+        <button
+          type="button"
+          className="km-btn km-btn-soft km-account-mobile-toggle"
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          {menuOpen ? 'Đóng menu tài khoản' : 'Menu tài khoản'}
+        </button>
+      </div>
+
+      <div className="km-account-grid">
+        <aside className={`km-account-sidebar ${menuOpen ? '' : 'km-account-sidebar--collapsed'}`}>
+          <h2 className="km-account-sidebar-title">Tài khoản của bạn</h2>
+          <p className="km-account-sidebar-user">{user?.fullName || user?.email}</p>
+
+          <nav className="km-account-nav" aria-label="Điều hướng tài khoản">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setMenuOpen(false)}
+                className={({ isActive }) => `km-account-nav-link ${isActive ? 'active' : ''}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+            <button type="button" className="km-account-logout" onClick={handleLogout}>
+              Đăng xuất
+            </button>
+          </nav>
+        </aside>
+
+        <section className="km-account-main">
+          <Outlet />
+        </section>
+      </div>
     </div>
   );
 }

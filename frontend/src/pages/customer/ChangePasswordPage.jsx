@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../../utils/toast';
+import '../../styles/auth.css';
+import '../../styles/customer.css';
 
 /**
- * Trang Đổi mật khẩu tài khoản (dành cho Customer đã đăng nhập).
- * Kết nối API PUT /api/users/me/password.
+ * Trang Đổi mật khẩu (chỉ Customer, Figma frame 3:566).
+ * Kết nối PUT /api/users/me/password.
  */
 export function ChangePasswordPage() {
   const { changePassword } = useAuth();
@@ -12,253 +14,146 @@ export function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
 
   const validate = () => {
-    const newErrors = {};
+    const next = {};
 
     if (!oldPassword) {
-      newErrors.oldPassword = 'Vui lòng nhập mật khẩu hiện tại.';
+      next.oldPassword = 'Vui lòng nhập mật khẩu hiện tại.';
     }
-
     if (!newPassword) {
-      newErrors.newPassword = 'Vui lòng nhập mật khẩu mới.';
+      next.newPassword = 'Vui lòng nhập mật khẩu mới.';
     } else if (newPassword.length < 8) {
-      newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự.';
+      next.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự.';
     } else if (newPassword === oldPassword) {
-      newErrors.newPassword = 'Mật khẩu mới không được trùng với mật khẩu hiện tại.';
+      next.newPassword = 'Mật khẩu mới không được trùng mật khẩu hiện tại.';
     }
-
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Vui lòng xác nhận lại mật khẩu mới.';
+      next.confirmPassword = 'Vui lòng xác nhận mật khẩu mới.';
     } else if (confirmPassword !== newPassword) {
-      newErrors.confirmPassword = 'Mật khẩu xác nhận không trùng khớp.';
+      next.confirmPassword = 'Mật khẩu xác nhận không trùng khớp.';
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
-
     if (!validate()) return;
 
     setSubmitting(true);
     try {
       await changePassword({ oldPassword, newPassword });
-      toast.success('Đổi mật khẩu thành công!');
+      toast.success('Cập nhật mật khẩu thành công!');
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setErrors({});
     } catch (err) {
-      const message =
+      setServerError(
         err.response?.data?.message ||
-        'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.';
-      setServerError(message);
+          'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.'
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '480px' }}>
-      <h1
-        style={{
-          fontSize: '1.4rem',
-          fontWeight: 700,
-          color: '#111827',
-          marginBottom: '0.5rem',
-        }}
+    <>
+      <div>
+        <h1 className="km-account-heading">Đổi mật khẩu</h1>
+        <p className="km-auth-subtitle">Giữ tài khoản an toàn với mật khẩu mạnh.</p>
+      </div>
+
+      <form
+        className="km-account-card"
+        style={{ maxWidth: '650px' }}
+        onSubmit={handleSubmit}
+        noValidate
       >
-        Đổi mật khẩu
-      </h1>
-      <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-        Để bảo vệ tài khoản của bạn, vui lòng không chia sẻ mật khẩu cho người khác. Mật khẩu mới cần từ 8 ký tự trở lên.
-      </p>
+        {serverError && (
+          <div role="alert" className="km-alert-error">
+            {serverError}
+          </div>
+        )}
 
-      {serverError && (
-        <div
-          role="alert"
-          style={{
-            padding: '0.75rem 1rem',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            marginBottom: '1.25rem',
-          }}
-        >
-          {serverError}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} noValidate>
-        {/* Old password */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <label
-            htmlFor="change-old-password"
-            style={{
-              display: 'block',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              color: '#374151',
-              marginBottom: '0.35rem',
-            }}
-          >
-            Mật khẩu hiện tại <span style={{ color: '#dc2626' }}>*</span>
+        <div className="km-field">
+          <label htmlFor="change-old-password" className="km-label">
+            Mật khẩu hiện tại
           </label>
           <input
             id="change-old-password"
-            type={showPassword ? 'text' : 'password'}
+            type="password"
             autoComplete="current-password"
-            placeholder="Nhập mật khẩu đang dùng"
+            className={`km-input ${errors.oldPassword ? 'km-input--error' : ''}`}
+            placeholder="••••••••"
             value={oldPassword}
             onChange={(e) => {
               setOldPassword(e.target.value);
-              if (errors.oldPassword)
-                setErrors((prev) => ({ ...prev, oldPassword: '' }));
-            }}
-            style={{
-              width: '100%',
-              padding: '0.65rem 0.85rem',
-              borderRadius: '6px',
-              border: `1px solid ${errors.oldPassword ? '#dc2626' : '#d1d5db'}`,
-              outline: 'none',
-              fontSize: '0.95rem',
+              if (errors.oldPassword) setErrors((p) => ({ ...p, oldPassword: '' }));
             }}
           />
-          {errors.oldPassword && (
-            <p style={{ color: '#dc2626', fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-              {errors.oldPassword}
-            </p>
-          )}
+          {errors.oldPassword && <p className="km-field-error">{errors.oldPassword}</p>}
         </div>
 
-        {/* New password */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <label
-            htmlFor="change-new-password"
-            style={{
-              display: 'block',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              color: '#374151',
-              marginBottom: '0.35rem',
-            }}
-          >
-            Mật khẩu mới (≥ 8 ký tự) <span style={{ color: '#dc2626' }}>*</span>
+        <div className="km-field">
+          <label htmlFor="change-new-password" className="km-label">
+            Mật khẩu mới
           </label>
           <input
             id="change-new-password"
-            type={showPassword ? 'text' : 'password'}
+            type="password"
             autoComplete="new-password"
-            placeholder="Tối thiểu 8 ký tự"
+            className={`km-input ${errors.newPassword ? 'km-input--error' : ''}`}
+            placeholder="••••••••"
             value={newPassword}
             onChange={(e) => {
               setNewPassword(e.target.value);
-              if (errors.newPassword)
-                setErrors((prev) => ({ ...prev, newPassword: '' }));
-            }}
-            style={{
-              width: '100%',
-              padding: '0.65rem 0.85rem',
-              borderRadius: '6px',
-              border: `1px solid ${errors.newPassword ? '#dc2626' : '#d1d5db'}`,
-              outline: 'none',
-              fontSize: '0.95rem',
+              if (errors.newPassword) setErrors((p) => ({ ...p, newPassword: '' }));
             }}
           />
-          {errors.newPassword && (
-            <p style={{ color: '#dc2626', fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-              {errors.newPassword}
-            </p>
-          )}
+          <p className="km-field-hint">
+            Ít nhất 8 ký tự. Nên kết hợp chữ, số và ký tự đặc biệt.
+          </p>
+          {errors.newPassword && <p className="km-field-error">{errors.newPassword}</p>}
         </div>
 
-        {/* Confirm new password */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label
-            htmlFor="change-confirm-password"
-            style={{
-              display: 'block',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              color: '#374151',
-              marginBottom: '0.35rem',
-            }}
-          >
-            Xác nhận mật khẩu mới <span style={{ color: '#dc2626' }}>*</span>
+        <div className="km-field">
+          <label htmlFor="change-confirm-password" className="km-label">
+            Xác nhận mật khẩu mới
           </label>
           <input
             id="change-confirm-password"
-            type={showPassword ? 'text' : 'password'}
+            type="password"
             autoComplete="new-password"
-            placeholder="Nhập lại mật khẩu mới"
+            className={`km-input ${errors.confirmPassword ? 'km-input--error' : ''}`}
+            placeholder="••••••••"
             value={confirmPassword}
             onChange={(e) => {
               setConfirmPassword(e.target.value);
-              if (errors.confirmPassword)
-                setErrors((prev) => ({ ...prev, confirmPassword: '' }));
-            }}
-            style={{
-              width: '100%',
-              padding: '0.65rem 0.85rem',
-              borderRadius: '6px',
-              border: `1px solid ${errors.confirmPassword ? '#dc2626' : '#d1d5db'}`,
-              outline: 'none',
-              fontSize: '0.95rem',
+              if (errors.confirmPassword) setErrors((p) => ({ ...p, confirmPassword: '' }));
             }}
           />
-          {errors.confirmPassword && (
-            <p style={{ color: '#dc2626', fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-              {errors.confirmPassword}
-            </p>
-          )}
+          {errors.confirmPassword && <p className="km-field-error">{errors.confirmPassword}</p>}
         </div>
 
-        {/* Show password checkbox */}
-        <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            id="toggle-change-password-visibility"
-            type="checkbox"
-            checked={showPassword}
-            onChange={(e) => setShowPassword(e.target.checked)}
-            style={{ cursor: 'pointer' }}
-          />
-          <label
-            htmlFor="toggle-change-password-visibility"
-            style={{ fontSize: '0.875rem', color: '#4b5563', cursor: 'pointer' }}
-          >
-            Hiển thị mật khẩu
-          </label>
+        <div>
+          <button type="submit" className="km-btn km-btn-primary" disabled={submitting}>
+            {submitting ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+          </button>
         </div>
 
-        {/* Submit button */}
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            padding: '0.7rem 1.5rem',
-            backgroundColor: submitting ? '#93c5fd' : '#2563eb',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '0.95rem',
-            fontWeight: 600,
-            cursor: submitting ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {submitting ? 'Đang cập nhật...' : 'Lưu mật khẩu mới'}
-        </button>
+        <p className="km-field-hint" style={{ fontSize: 'var(--text-sm)' }}>
+          Sau khi đổi mật khẩu, hãy sử dụng mật khẩu mới cho lần đăng nhập tiếp theo.
+        </p>
       </form>
-    </div>
+    </>
   );
 }
 
