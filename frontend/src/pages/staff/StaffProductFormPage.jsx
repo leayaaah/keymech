@@ -15,6 +15,20 @@ const CATEGORIES = [
   { id: 5, name: 'Kit bàn phím' },
 ];
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
+
+function validateImageFile(file) {
+  if (!file) return '';
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return 'Ảnh sản phẩm chỉ chấp nhận định dạng JPG, PNG hoặc WebP.';
+  }
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return 'Dung lượng ảnh tối đa là 2 MB.';
+  }
+  return '';
+}
+
 /**
  * Trang Thêm / Chỉnh sửa sản phẩm (Figma frame 3:106).
  * Quy tắc: giá > 0, tồn kho ≥ 0, hỗ trợ upload ảnh vào uploads/.
@@ -83,6 +97,10 @@ export function StaffProductFormPage() {
     if (form.stockQuantity === '' || !Number.isInteger(stockNum) || stockNum < 0) {
       next.stockQuantity = 'Tồn kho phải là số nguyên ≥ 0.';
     }
+    const imageError = validateImageFile(imageFile);
+    if (imageError) {
+      next.image = imageError;
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -105,12 +123,10 @@ export function StaffProductFormPage() {
         specs: form.specs.trim() || null,
       };
 
-      const saved = isEdit
-        ? await staffProductApi.update(id, payload)
-        : await staffProductApi.create(payload);
-
-      if (imageFile && (saved?.id || id)) {
-        await staffProductApi.uploadImage(saved?.id || id, imageFile);
+      if (isEdit) {
+        await staffProductApi.update(id, payload, imageFile);
+      } else {
+        await staffProductApi.create(payload, imageFile);
       }
 
       toast.success(isEdit ? 'Đã cập nhật sản phẩm.' : 'Đã thêm sản phẩm mới.');
@@ -242,15 +258,27 @@ export function StaffProductFormPage() {
 
         <div className="km-field">
           <label htmlFor="prod-image" className="km-label">
-            Ảnh sản phẩm (JPG/PNG/WebP)
+            Ảnh sản phẩm (JPG/PNG/WebP, tối đa 2 MB)
           </label>
           <input
             id="prod-image"
             type="file"
-            accept="image/*"
-            className="km-input"
-            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+            accept="image/jpeg,image/png,image/webp"
+            className={`km-input ${errors.image ? 'km-input--error' : ''}`}
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              const imgErr = validateImageFile(file);
+              if (imgErr) {
+                setImageFile(null);
+                setErrors((p) => ({ ...p, image: imgErr }));
+              } else {
+                setImageFile(file);
+                setErrors((p) => ({ ...p, image: '' }));
+              }
+            }}
           />
+          <p className="km-field-hint">Định dạng JPG, PNG hoặc WebP, tối đa 2 MB.</p>
+          {errors.image && <p className="km-field-error">{errors.image}</p>}
         </div>
 
         <div className="km-field">

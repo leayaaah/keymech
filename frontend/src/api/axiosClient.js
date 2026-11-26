@@ -14,6 +14,13 @@ const axiosClient = axios.create({
 // Request interceptor
 axiosClient.interceptors.request.use(
   (config) => {
+    if (config.data instanceof FormData) {
+      if (config.headers && typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error)

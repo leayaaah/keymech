@@ -3,6 +3,19 @@ import { staffProductMock } from './mock/staffProductMock';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
+function buildProductFormData(payload, imageFile) {
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      formData.append(key, String(value));
+    }
+  });
+  if (imageFile) {
+    formData.append('image', imageFile);
+  }
+  return formData;
+}
+
 /**
  * API quản lý sản phẩm dành cho Staff & Admin (A-01..A-03).
  * TODO(backend): Backend chưa có controller /api/staff/products/** và /api/admin/products/{id}/visibility.
@@ -21,26 +34,19 @@ export const staffProductApi = {
     return axiosClient.get(`/staff/products/${encodeURIComponent(id)}`);
   },
 
-  // TODO(backend): POST /api/staff/products
-  create(payload) {
+  // TODO(backend): POST /api/staff/products (multipart kèm ảnh)
+  create(payload, imageFile = null) {
     if (USE_MOCK) return staffProductMock.create(payload);
-    return axiosClient.post('/staff/products', payload);
+    return axiosClient.post('/staff/products', buildProductFormData(payload, imageFile));
   },
 
-  // TODO(backend): PUT /api/staff/products/{id}
-  update(id, payload) {
+  // TODO(backend): PUT /api/staff/products/{id} (multipart kèm ảnh)
+  update(id, payload, imageFile = null) {
     if (USE_MOCK) return staffProductMock.update(id, payload);
-    return axiosClient.put(`/staff/products/${encodeURIComponent(id)}`, payload);
-  },
-
-  // TODO(backend): POST /api/staff/products/{id}/image (multipart/form-data)
-  uploadImage(id, file) {
-    if (USE_MOCK) return Promise.resolve({ imageUrl: '' });
-    const formData = new FormData();
-    formData.append('file', file);
-    return axiosClient.post(`/staff/products/${encodeURIComponent(id)}/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return axiosClient.put(
+      `/staff/products/${encodeURIComponent(id)}`,
+      buildProductFormData(payload, imageFile)
+    );
   },
 
   // TODO(backend): PUT /api/admin/products/{id}/visibility (Chỉ ADMIN)
