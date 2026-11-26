@@ -37,14 +37,6 @@ export const adminMock = {
     mockCategories.push(created);
     return Promise.resolve(created);
   },
-  updateCategory(id, { name, slug }) {
-    const idx = mockCategories.findIndex((c) => String(c.id) === String(id));
-    if (idx === -1) {
-      return Promise.reject({ response: { status: 404, data: { message: 'Không tìm thấy danh mục.' } } });
-    }
-    mockCategories[idx] = { ...mockCategories[idx], name, slug };
-    return Promise.resolve({ ...mockCategories[idx] });
-  },
   toggleCategoryVisibility(id, status) {
     const idx = mockCategories.findIndex((c) => String(c.id) === String(id));
     if (idx === -1) {
@@ -55,7 +47,7 @@ export const adminMock = {
         response: {
           status: 409,
           data: {
-            error: 'CATEGORY_HAS_ACTIVE_PRODUCTS',
+            error: 'CATEGORY_NOT_EMPTY',
             message: `Không thể ẩn danh mục vì vẫn còn ${mockCategories[idx].activeProductCount} sản phẩm đang hiển thị.`,
           },
         },

@@ -27,13 +27,7 @@ export const adminCategoryApi = {
     return axiosClient.post('/admin/categories', { name, slug });
   },
 
-  // TODO(backend): PUT /api/admin/categories/{id}
-  update(id, { name, slug }) {
-    if (USE_MOCK) return adminMock.updateCategory(id, { name, slug });
-    return axiosClient.put(`/admin/categories/${encodeURIComponent(id)}`, { name, slug });
-  },
-
-  // TODO(backend): PUT /api/admin/categories/{id}/visibility (409 nếu còn sản phẩm ACTIVE)
+  // TODO(backend): PUT /api/admin/categories/{id}/visibility (409 CATEGORY_NOT_EMPTY nếu còn sản phẩm ACTIVE)
   toggleVisibility(id, status) {
     if (USE_MOCK) return adminMock.toggleCategoryVisibility(id, status);
     return axiosClient.put(`/admin/categories/${encodeURIComponent(id)}/visibility`, { status });

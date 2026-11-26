@@ -22,7 +22,8 @@ function toSlug(str) {
 /**
  * Trang Quản lý danh mục Admin (Figma frames 3:3828, 3:3829, 3:3830).
  * - Tên và slug không trùng.
- * - Không thể ẩn danh mục khi còn sản phẩm ACTIVE (409 -> hiện Modal "Không thể ẩn danh mục").
+ * - Không thể ẩn danh mục khi còn sản phẩm ACTIVE (409 CATEGORY_NOT_EMPTY -> Modal "Không thể ẩn danh mục").
+ * - Ngoài phạm vi kế hoạch mục 6: chưa có endpoint PUT /api/admin/categories/{id} để sửa danh mục.
  */
 export function AdminCategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -30,7 +31,7 @@ export function AdminCategoriesPage() {
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [editor, setEditor] = useState(null); // null | { id?, name, slug }
+  const [editor, setEditor] = useState(null); // null | { name, slug }
   const [saving, setSaving] = useState(false);
   const [blockedModal, setBlockedModal] = useState(null); // string message on 409
 
@@ -57,7 +58,7 @@ export function AdminCategoriesPage() {
     };
   }, [reloadKey]);
 
-  const handleSave = async (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     const name = editor.name.trim();
     const slug = (editor.slug.trim() || toSlug(name)).toLowerCase();
@@ -68,13 +69,8 @@ export function AdminCategoriesPage() {
 
     setSaving(true);
     try {
-      if (editor.id) {
-        await adminCategoryApi.update(editor.id, { name, slug });
-        toast.success('Đã cập nhật danh mục.');
-      } else {
-        await adminCategoryApi.create({ name, slug });
-        toast.success('Đã thêm danh mục mới.');
-      }
+      await adminCategoryApi.create({ name, slug });
+      toast.success('Đã thêm danh mục mới.');
       setEditor(null);
       setLoading(true);
       setReloadKey((k) => k + 1);
@@ -99,7 +95,8 @@ export function AdminCategoriesPage() {
           : `Đã hiển thị lại danh mục "${cat.name}".`
       );
     } catch (err) {
-      if (err?.response?.status === 409) {
+      const errCode = err?.response?.data?.error;
+      if (err?.response?.status === 409 && (errCode === 'CATEGORY_NOT_EMPTY' || !errCode)) {
         setBlockedModal(
           err?.response?.data?.message ||
             `Không thể ẩn danh mục "${cat.name}" vì vẫn còn sản phẩm đang hiển thị.`
@@ -118,7 +115,7 @@ export function AdminCategoriesPage() {
         <div>
           <h1 className="km-portal-title">Quản lý danh mục</h1>
           <p className="km-auth-subtitle">
-            Thêm, sửa và ẩn/hiện danh mục sản phẩm (không xóa vật lý).
+            Thêm mới và ẩn/hiện danh mục sản phẩm (không xóa vật lý).
           </p>
         </div>
         <button
@@ -170,24 +167,14 @@ export function AdminCategoriesPage() {
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        type="button"
-                        className="km-btn km-btn-soft km-btn-sm"
-                        disabled={saving}
-                        onClick={() => setEditor({ id: cat.id, name: cat.name, slug: cat.slug })}
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        className={`km-btn km-btn-sm ${cat.status === 'ACTIVE' ? 'km-btn-danger' : 'km-btn-primary'}`}
-                        disabled={saving}
-                        onClick={() => handleToggle(cat)}
-                      >
-                        {cat.status === 'ACTIVE' ? 'Ẩn' : 'Hiện'}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className={`km-btn km-btn-sm ${cat.status === 'ACTIVE' ? 'km-btn-danger' : 'km-btn-primary'}`}
+                      disabled={saving}
+                      onClick={() => handleToggle(cat)}
+                    >
+                      {cat.status === 'ACTIVE' ? 'Ẩn' : 'Hiện'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -196,11 +183,11 @@ export function AdminCategoriesPage() {
         </div>
       )}
 
-      {/* Modal Thêm / Sửa danh mục (Figma 3:3829) */}
+      {/* Modal Thêm danh mục mới (Figma 3:3829) */}
       {editor && (
         <div className="km-modal-backdrop" role="dialog" aria-modal="true">
-          <form className="km-modal" onSubmit={handleSave}>
-            <h2>{editor.id ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}</h2>
+          <form className="km-modal" onSubmit={handleCreate}>
+            <h2>Thêm danh mục mới</h2>
             <div className="km-field">
               <label htmlFor="cat-name" className="km-label">
                 Tên danh mục <span className="km-required">*</span>
@@ -212,11 +199,10 @@ export function AdminCategoriesPage() {
                 value={editor.name}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setEditor((prev) => ({
-                    ...prev,
+                  setEditor({
                     name: val,
-                    slug: prev.id ? prev.slug : toSlug(val),
-                  }));
+                    slug: toSlug(val),
+                  });
                 }}
                 placeholder="Bàn phím cơ"
               />
