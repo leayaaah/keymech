@@ -1,0 +1,51 @@
+{
+  "info": {
+    "name": "KeyMech G-04 - Kiểm tra API Chatbot",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" }
+  ],
+  "item": [
+    {
+      "name": "Chatbot trả lời lời chào bằng rule",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "pm.test('Có lời chào và mode rule', () => {",
+            "  const result = pm.response.json();",
+            "  pm.expect(result.mode).to.equal('rule');",
+            "  pm.expect(result.answer).to.be.a('string').and.not.empty;",
+            "});"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/chat",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"message\":\"Xin chào\"}" }
+      }
+    },
+    {
+      "name": "Guest không có quyền reindex",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+            "pm.test('Mã lỗi UNAUTHORIZED', () => {",
+            "  pm.expect(pm.response.json().error).to.equal('UNAUTHORIZED');",
+            "});"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/admin/chatbot/reindex"
+      }
+    }
+  ]
+}

@@ -17,7 +17,6 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import vn.edu.iuh.keymech.dto.ChatProductResponse;
 import vn.edu.iuh.keymech.dto.ChatResponse;
-import vn.edu.iuh.keymech.model.Product;
 import vn.edu.iuh.keymech.repository.ChatProductRepository;
 
 @Service
@@ -59,7 +58,7 @@ public class RuleBasedChatbotService implements ChatbotService {
             return response("policy", List.of());
         }
         if (containsAny(text, "thoi tiet", "troi mua", "hom nay co mua", "bong da", "system prompt")) {
-            return response("outOfScope", List.of());
+            return outOfScope();
         }
 
         String layout = layout(text);
@@ -68,25 +67,24 @@ public class RuleBasedChatbotService implements ChatbotService {
         boolean shoppingQuestion = layout != null || maxPrice != null || term != null
             || containsAny(text, "ban phim", "goi y", "tu van", "san pham", "gia", "mua", "phu kien");
         if (!shoppingQuestion) {
-            return response("outOfScope", List.of());
+            return outOfScope();
         }
         List<ChatProductResponse> matches = products.recommend(
                 layout, maxPrice, term,
                 PageRequest.of(0, 6, Sort.by("price").ascending().and(Sort.by("id"))))
-            .getContent().stream().map(this::toResponse).toList();
+            .getContent().stream().map(ChatProductResponse::from).toList();
         return response(matches.isEmpty() ? "noResults" : "recommend", matches);
-    }
-
-    private ChatProductResponse toResponse(Product product) {
-        return new ChatProductResponse(product.getId(), product.getName(), product.getPrice(),
-            product.getImageUrl(), product.getStockQuantity() > 0, "/products/" + product.getId());
     }
 
     private ChatResponse response(String key, List<ChatProductResponse> matches) {
         return new ChatResponse(intents.get(key), matches, SUGGESTIONS, "rule");
     }
 
-    private static String normalize(String value) {
+    ChatResponse outOfScope() {
+        return response("outOfScope", List.of());
+    }
+
+    static String normalize(String value) {
         return Normalizer.normalize(value == null ? "" : value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
             .replaceAll("\\p{M}", "").replace('đ', 'd');
     }
@@ -98,7 +96,7 @@ public class RuleBasedChatbotService implements ChatbotService {
         return false;
     }
 
-    private static String layout(String text) {
+    static String layout(String text) {
         Matcher match = LAYOUT.matcher(text);
         if (!match.find()) return null;
         return switch (match.group(1)) {
@@ -108,7 +106,7 @@ public class RuleBasedChatbotService implements ChatbotService {
         };
     }
 
-    private static BigDecimal budget(String text) {
+    static BigDecimal budget(String text) {
         Matcher match = BUDGET.matcher(text);
         if (!match.find()) return null;
         String unit = match.group(2);
