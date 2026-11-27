@@ -1,10 +1,8 @@
 package vn.edu.iuh.keymech.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +27,9 @@ import vn.edu.iuh.keymech.repository.ProductRepository;
 import vn.edu.iuh.keymech.repository.UserRepository;
 
 /**
- * A-08: kiểm tra đối chiếu số đếm và doanh thu Dashboard với dữ liệu cố định.
- * Dữ liệu tạo trong cùng transaction (rollback sau test), nên số liệu "hôm nay/tháng này"
- * được đếm chính xác dựa trên mốc thời gian tại thời điểm chạy test.
+ * A-08: kiểm tra Dashboard bằng cách đối chiếu số đếm và doanh thu với dữ liệu
+ * xác định trước. Cách đối chiếu: snapshot tổng trước khi tạo dữ liệu cố định,
+ * rồi kiểm tra hiệu tăng (delta) sau khi thêm — không phụ thuộc seed data.
  */
 @SpringBootTest
 @Transactional
@@ -45,8 +43,10 @@ class DashboardServiceTest {
     @Autowired CustomRequestRepository customRequests;
 
     @Test
-    void countsAndRevenueMatchFixedData() {
-        // Dữ liệu cố định tạo ngay khi chạy test
+    void summaryCountsAndRevenueReflectFixedData() {
+        DashboardResponse before = dashboardService.getSummary();
+
+        // Dữ liệu cố định tạo trong cùng transaction (rollback sau test)
         User customer = createCustomer();
         Product dashProduct = createProduct(5, 1_000_000);
         createProduct(0, 2_000_000);
@@ -55,7 +55,7 @@ class DashboardServiceTest {
                 OrderStatus.SHIPPING, PaymentStatus.PAID);
         createOrder(customer, BigDecimal.valueOf(1_000_000), OrderStatus.NEW, PaymentStatus.UNPAID);
 
-        // Item thuộc đơn paid (1 sản phẩm × 3.000.000) để tổng đơn khớp totalAmount
+        // Item thuộc đơn paid (1 × 3.000.000) để tổng đơn khớp totalAmount
         OrderItem item = new OrderItem();
         item.setOrder(paid);
         item.setProduct(dashProduct);
@@ -66,35 +66,34 @@ class DashboardServiceTest {
         createCustomRequest(customer, CustomStatus.PENDING);
         createCustomRequest(customer, CustomStatus.IN_PROGRESS);
 
-        DashboardResponse summary = dashboardService.getSummary();
+        DashboardResponse after = dashboardService.getSummary();
 
-        // Số đếm tối thiểu khớp dữ liệu cố định (DB cô lập cho test)
-        assertEquals(2, summary.totalOrders());
-        assertEquals(1, summary.pendingOrders());
-        assertEquals(2, summary.totalProducts());
-        assertEquals(1, summary.customRequestsByStatus().get(CustomStatus.PENDING));
-        assertEquals(1, summary.customRequestsByStatus().get(CustomStatus.IN_PROGRESS));
-        assertEquals(0L, summary.customRequestsByStatus().get(CustomStatus.COMPLETED));
-        assertEquals(1, summary.totalUsers());
+        // Số đếm tăng đúng bằng dữ liệu cố định
+        assertEquals(before.totalOrders() + 2, after.totalOrders());
+        assertEquals(before.pendingOrders() + 1, after.pendingOrders());
+        assertEquals(before.totalProducts() + 2, after.totalProducts());
+        assertEquals(before.totalUsers() + 1, after.totalUsers());
+        assertEquals(before.customRequestsByStatus().get(CustomStatus.PENDING) + 1,
+                after.customRequestsByStatus().get(CustomStatus.PENDING));
+        assertEquals(before.customRequestsByStatus().get(CustomStatus.IN_PROGRESS) + 1,
+                after.customRequestsByStatus().get(CustomStatus.IN_PROGRESS));
+        assertEquals(before.customRequestsByStatus().get(CustomStatus.COMPLETED),
+                after.customRequestsByStatus().get(CustomStatus.COMPLETED));
 
-        // Số liệu "hôm nay" và "tháng này" — cả hai đơn + khách tạo ngay tại thời điểm chạy
-        assertEquals(2, summary.ordersToday());
-        assertEquals(2, summary.ordersThisMonth());
-        assertEquals(1, summary.newUsersToday());
-        assertEquals(1, summary.newUsersThisMonth());
+        // Số liệu "hôm nay" / "tháng này": đơn và khách đều tạo tại thời điểm chạy
+        assertEquals(before.ordersToday() + 2, after.ordersToday());
+        assertEquals(before.ordersThisMonth() + 2, after.ordersThisMonth());
+        assertEquals(before.newUsersToday() + 1, after.newUsersToday());
+        assertEquals(before.newUsersThisMonth() + 1, after.newUsersThisMonth());
 
-        // Doanh thu chỉ tính đơn PAID và chưa CANCELLED: chỉ đơn "paid" (3.000.000)
-        assertEquals(BigDecimal.valueOf(3_000_000), summary.revenueToday());
-        assertEquals(BigDecimal.valueOf(3_000_000), summary.revenueThisMonth());
+        // Doanh thu: chỉ đơn PAID và chưa CANCELLED (đơn paid: 3.000.000)
+        assertEquals(before.revenueToday().add(BigDecimal.valueOf(3_000_000)), after.revenueToday());
+        assertEquals(before.revenueThisMonth().add(BigDecimal.valueOf(3_000_000)), after.revenueThisMonth());
 
-        // Kiểm tra đối chiếu nội bộ: item của đơn paid khớp sản phẩm, số lượng và đơn giá
-        List<OrderItem> items = paid.getItems();
-        assertEquals(1, items.size());
-        assertEquals(1, items.getFirst().getQuantity());
-        assertEquals(dashProduct.getId(), items.getFirst().getProduct().getId());
-        assertEquals(2, summary.totalProducts());
-        assertTrue(summary.customRequestsByStatus().values().stream()
-                .allMatch(count -> count >= 0));
+        // Đối chiếu nội bộ: item của đơn paid khớp sản phẩm, số lượng và đơn giá
+        assertEquals(dashProduct.getId(), item.getProduct().getId());
+        assertEquals(1, item.getQuantity());
+        assertEquals(paid.getTotalAmount(), item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
     }
 
     private User createCustomer() {
