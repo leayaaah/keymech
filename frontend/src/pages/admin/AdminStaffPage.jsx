@@ -3,7 +3,10 @@ import { adminUserApi } from '../../api/adminUserApi';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import Loading from '../../components/Loading';
-import './adminUsers.css';
+import { toast } from '../../utils/toast';
+import '../../styles/auth.css';
+import '../../styles/customer.css';
+import '../../styles/portal.css';
 
 const roleLabels = {
   CUSTOMER: 'Khách hàng',
@@ -11,6 +14,12 @@ const roleLabels = {
   ADMIN: 'Quản trị viên',
 };
 
+/**
+ * Trang Quản lý người dùng & Tạo tài khoản nhân viên (Figma frames 3:3826, 3:3827, 3:6220).
+ * Quy tắc:
+ * - Không sửa, ẩn hoặc đặt lại mật khẩu tài khoản ADMIN.
+ * - Tài khoản mới tạo có vai trò cố định STAFF.
+ */
 export default function AdminStaffPage() {
   const [query, setQuery] = useState({ keyword: '', role: '', page: 0 });
   const [result, setResult] = useState(null);
@@ -35,10 +44,9 @@ export default function AdminStaffPage() {
         if (active) setResult(data);
       })
       .catch((err) => {
-        if (active)
-          setError(
-            err.response?.data?.message || 'Không thể tải danh sách người dùng.'
-          );
+        if (active) {
+          setError(err.response?.data?.message || 'Không thể tải danh sách người dùng.');
+        }
       });
     return () => {
       active = false;
@@ -64,7 +72,7 @@ export default function AdminStaffPage() {
   function refresh() {
     setError('');
     setResult(null);
-    setReload((value) => value + 1);
+    setReload((v) => v + 1);
   }
 
   async function mutate(operation, successMessage) {
@@ -75,7 +83,7 @@ export default function AdminStaffPage() {
     try {
       await operation();
       setEditor(null);
-      setNotice({ message: successMessage });
+      toast.success(successMessage);
       refresh();
     } catch (err) {
       const status = err.response?.status;
@@ -110,225 +118,278 @@ export default function AdminStaffPage() {
     }
 
     if (editor.id) {
-      mutate(
-        () => adminUserApi.update(editor.id, details),
-        'Đã lưu thông tin người dùng.'
-      );
+      mutate(() => adminUserApi.update(editor.id, details), 'Đã lưu thông tin người dùng.');
     } else {
       const email = fields.get('email').trim();
       const password = fields.get('password');
-      if (!email || !password.trim()) {
+      if (!email || !password || password.length < 8) {
         setNotice({
           error: true,
-          message: 'Vui lòng nhập email và mật khẩu ban đầu.',
+          message: 'Vui lòng nhập email hợp lệ và mật khẩu ban đầu từ 8 ký tự trở lên.',
         });
         return;
       }
       mutate(
         () => adminUserApi.createStaff({ ...details, email, password }),
-        'Đã tạo tài khoản Staff.'
+        'Đã tạo tài khoản nhân viên (STAFF).'
       );
     }
   }
 
   function toggle(user) {
+    if (user.role === 'ADMIN') return;
     const label = user.enabled ? 'Ẩn' : 'Hiện';
     if (window.confirm(`${label} tài khoản ${user.fullName}?`)) {
       mutate(
         () => adminUserApi.toggleVisibility(user.id),
-        `Đã ${label.toLowerCase()} tài khoản.`
+        `Đã ${label.toLowerCase()} tài khoản ${user.fullName}.`
       );
     }
   }
 
   return (
-    <div className="admin-users">
-      <h1>Quản lý người dùng</h1>
-      <form className="admin-user-controls" onSubmit={applyFilters}>
-        <label>
-          Họ tên
-          <input type="search" name="keyword" />
-        </label>
-        <label>
-          Vai trò
-          <select name="role" defaultValue="">
-            <option value="">Tất cả</option>
-            <option value="CUSTOMER">Khách hàng</option>
-            <option value="STAFF">Nhân viên</option>
-          </select>
-        </label>
-        <button type="submit" disabled={busy}>
-          Tìm người dùng
-        </button>
+    <>
+      <div className="km-portal-top">
+        <div>
+          <h1 className="km-portal-title">Quản lý người dùng</h1>
+          <p className="km-auth-subtitle">
+            Tạo tài khoản nhân viên (vai trò cố định STAFF) và quản lý trạng thái tài khoản.
+          </p>
+        </div>
         <button
           type="button"
+          className="km-btn km-btn-primary"
           disabled={busy}
           onClick={() => {
             setEditor({});
             setNotice(null);
           }}
         >
-          Thêm nhân viên
+          + Tạo tài khoản nhân viên
+        </button>
+      </div>
+
+      <form className="km-filter-bar" onSubmit={applyFilters}>
+        <div className="km-field">
+          <label htmlFor="admin-user-kw" className="km-label">
+            Họ tên
+          </label>
+          <input id="admin-user-kw" type="search" name="keyword" className="km-input" placeholder="Tìm theo họ tên..." />
+        </div>
+
+        <div className="km-field" style={{ maxWidth: '220px' }}>
+          <label htmlFor="admin-user-role" className="km-label">
+            Vai trò
+          </label>
+          <select id="admin-user-role" name="role" className="km-select" defaultValue="">
+            <option value="">Tất cả</option>
+            <option value="CUSTOMER">Khách hàng</option>
+            <option value="STAFF">Nhân viên</option>
+          </select>
+        </div>
+
+        <button type="submit" className="km-btn km-btn-primary" disabled={busy}>
+          Tìm kiếm
         </button>
       </form>
+
       {notice && (
-        <p role={notice.error ? 'alert' : 'status'}>{notice.message}</p>
+        <div role={notice.error ? 'alert' : 'status'} className={notice.error ? 'km-alert-error' : 'km-alert-success'}>
+          {notice.message}
+        </div>
       )}
+
+      {error ? (
+        <ErrorState title="Lỗi tải người dùng" message={error} onRetry={refresh} />
+      ) : !result ? (
+        <Loading message="Đang tải danh sách người dùng..." />
+      ) : (result.content ?? []).length === 0 ? (
+        <EmptyState title="Không tìm thấy người dùng nào" />
+      ) : (
+        <>
+          <div className="km-table-wrap">
+            <table className="km-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Họ tên</th>
+                  <th scope="col" role="columnheader">Email</th>
+                  <th scope="col" role="columnheader">Vai trò</th>
+                  <th scope="col" role="columnheader">Trạng thái</th>
+                  <th scope="col" role="columnheader">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody role="rowgroup">
+                {result.content.map((user) => (
+                  <tr role="row" key={user.id}>
+                    <td role="cell" data-label="Họ tên">
+                      <strong>{user.fullName}</strong>
+                    </td>
+                    <td role="cell" data-label="Email">{user.email}</td>
+                    <td role="cell" data-label="Vai trò">
+                      <span className={user.role === 'ADMIN' ? 'km-badge km-badge--warning' : 'km-badge km-badge--info'}>
+                        {roleLabels[user.role] || user.role}
+                      </span>
+                    </td>
+                    <td role="cell" data-label="Trạng thái">
+                      <span className={user.enabled ? 'km-badge km-badge--success' : 'km-badge km-badge--neutral'}>
+                        {user.enabled ? 'Đang hoạt động' : 'Đã ẩn'}
+                      </span>
+                    </td>
+                    <td role="cell" data-label="Thao tác">
+                      {user.role !== 'ADMIN' ? (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="km-btn km-btn-soft km-btn-sm"
+                            disabled={busy}
+                            onClick={() => {
+                              setEditor(user);
+                              setNotice(null);
+                            }}
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            className={`km-btn km-btn-sm ${user.enabled ? 'km-btn-danger' : 'km-btn-primary'}`}
+                            disabled={busy}
+                            onClick={() => toggle(user)}
+                          >
+                            {user.enabled ? 'Ẩn' : 'Hiện'}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="km-field-hint">Được bảo vệ</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {(result.totalPages > 1 || query.page > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <nav className="km-pagination" aria-label="Phân trang người dùng">
+                <button
+                  type="button"
+                  className="km-page-btn"
+                  disabled={query.page === 0 || busy}
+                  onClick={() => load({ ...query, page: query.page - 1 })}
+                >
+                  ‹
+                </button>
+                <span style={{ padding: '0 8px', fontSize: 'var(--text-sm)' }}>
+                  Trang {query.page + 1} / {result.totalPages || 1}
+                </span>
+                <button
+                  type="button"
+                  className="km-page-btn"
+                  disabled={query.page + 1 >= result.totalPages || busy}
+                  onClick={() => load({ ...query, page: query.page + 1 })}
+                >
+                  ›
+                </button>
+              </nav>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Modal Tạo Staff / Sửa thông tin (Figma 3:3827) */}
       {editor && (
-        <form
-          className="admin-user-editor"
-          key={editor.id || 'create'}
-          onSubmit={saveUser}
-        >
-          <h2>
-            {editor.id ? 'Sửa thông tin người dùng' : 'Tạo tài khoản Staff'}
-          </h2>
-          <fieldset disabled={busy}>
-            <label>
-              Họ tên
+        <div className="km-modal-backdrop" role="dialog" aria-modal="true">
+          <form className="km-modal" key={editor.id || 'create'} onSubmit={saveUser}>
+            <h2>{editor.id ? 'Chỉnh sửa người dùng' : 'Tạo tài khoản nhân viên'}</h2>
+            {!editor.id && (
+              <p className="km-field-hint">Vai trò được gán cố định là Nhân viên (STAFF).</p>
+            )}
+
+            <div className="km-field">
+              <label htmlFor="modal-fullname" className="km-label">
+                Họ tên <span className="km-required">*</span>
+              </label>
               <input
+                id="modal-fullname"
                 name="fullName"
-                autoComplete="off"
+                className="km-input"
                 required
                 maxLength={100}
                 defaultValue={editor.fullName || ''}
               />
-            </label>
+            </div>
+
             {!editor.id && (
               <>
-                <label>
-                  Email
+                <div className="km-field">
+                  <label htmlFor="modal-email" className="km-label">
+                    Email <span className="km-required">*</span>
+                  </label>
                   <input
+                    id="modal-email"
                     name="email"
                     type="email"
+                    className="km-input"
                     required
                     maxLength={150}
-                    autoComplete="off"
                   />
-                </label>
-                <label>
-                  Mật khẩu ban đầu
+                </div>
+                <div className="km-field">
+                  <label htmlFor="modal-password" className="km-label">
+                    Mật khẩu ban đầu (≥ 8 ký tự) <span className="km-required">*</span>
+                  </label>
                   <input
+                    id="modal-password"
                     name="password"
                     type="password"
+                    className="km-input"
                     minLength={8}
                     autoComplete="new-password"
                     required
                   />
-                </label>
+                </div>
               </>
             )}
-            <label>
-              Điện thoại
+
+            <div className="km-field">
+              <label htmlFor="modal-phone" className="km-label">
+                Số điện thoại
+              </label>
               <input
+                id="modal-phone"
                 name="phone"
                 type="tel"
+                className="km-input"
                 maxLength={15}
                 defaultValue={editor.phone || ''}
               />
-            </label>
-            <label>
-              Địa chỉ
+            </div>
+
+            <div className="km-field">
+              <label htmlFor="modal-address" className="km-label">
+                Địa chỉ
+              </label>
               <textarea
+                id="modal-address"
                 name="address"
                 rows={2}
+                className="km-textarea"
                 maxLength={255}
                 defaultValue={editor.address || ''}
               />
-            </label>
-            <div className="admin-user-controls">
-              <button type="submit">
-                {editor.id ? 'Lưu thông tin' : 'Tạo Staff'}
-              </button>
-              <button type="button" onClick={() => setEditor(null)}>
+            </div>
+
+            <div className="km-modal-actions">
+              <button type="button" className="km-btn km-btn-soft" disabled={busy} onClick={() => setEditor(null)}>
                 Đóng
               </button>
-            </div>
-          </fieldset>
-        </form>
-      )}
-      {error ? (
-        <ErrorState message={error} onRetry={refresh} />
-      ) : !result ? (
-        <Loading message="Đang tải danh sách người dùng..." />
-      ) : (
-        <>
-          {result.content.length === 0 ? (
-            <EmptyState title="Không có người dùng trên trang này" />
-          ) : (
-            <div className="admin-user-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Họ tên</th>
-                    <th>Email</th>
-                    <th>Vai trò</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.content.map((user) => (
-                    <tr key={user.id}>
-                      <td>{user.fullName}</td>
-                      <td>{user.email}</td>
-                      <td>{roleLabels[user.role]}</td>
-                      <td>{user.enabled ? 'Đang hiện' : 'Đã ẩn'}</td>
-                      <td>
-                        {user.role !== 'ADMIN' && (
-                          <div className="admin-user-controls">
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => {
-                                setEditor(user);
-                                setNotice(null);
-                              }}
-                              aria-label={`Sửa ${user.fullName}`}
-                            >
-                              Sửa
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => toggle(user)}
-                              aria-label={`${user.enabled ? 'Ẩn' : 'Hiện'} ${user.fullName}`}
-                            >
-                              {user.enabled ? 'Ẩn' : 'Hiện'}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {(result.totalPages > 1 || query.page > 0) && (
-            <nav
-              className="admin-user-controls"
-              aria-label="Phân trang người dùng"
-            >
-              <button
-                type="button"
-                disabled={query.page === 0 || busy}
-                onClick={() => load({ ...query, page: query.page - 1 })}
-              >
-                Trang trước
+              <button type="submit" className="km-btn km-btn-primary" disabled={busy}>
+                {busy ? 'Đang lưu...' : editor.id ? 'Lưu thông tin' : 'Tạo tài khoản Staff'}
               </button>
-              <span>Trang {query.page + 1}</span>
-              <button
-                type="button"
-                disabled={query.page + 1 >= result.totalPages || busy}
-                onClick={() => load({ ...query, page: query.page + 1 })}
-              >
-                Trang sau
-              </button>
-            </nav>
-          )}
-        </>
+            </div>
+          </form>
+        </div>
       )}
-    </div>
+    </>
   );
 }

@@ -12,6 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String location = Path.of(props.uploadDir()).toAbsolutePath().toUri().toString();
+        if (!location.endsWith("/")) location += "/";
         registry.addResourceHandler("/uploads/**").addResourceLocations(location);
     }
 }

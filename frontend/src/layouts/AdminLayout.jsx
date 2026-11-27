@@ -1,8 +1,9 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import '../styles/portal.css';
 
 /**
- * Layout khu vực Quản trị viên cấp cao (Admin).
+ * Layout khu vực Quản trị viên (Admin).
  * Không có icon giỏ hàng và Chatbot.
  */
 export function AdminLayout() {
@@ -15,158 +16,52 @@ export function AdminLayout() {
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        backgroundColor: '#0f172a',
-        color: '#f8fafc',
-      }}
-    >
-      {/* Admin Header */}
-      <header
-        style={{
-          backgroundColor: '#1e1b4b',
-          color: '#ffffff',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          borderBottom: '2px solid #818cf8',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1360px',
-            margin: '0 auto',
-            padding: '0.85rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <Link
-              to="/admin"
-              style={{
-                color: '#ffffff',
-                textDecoration: 'none',
-                fontWeight: 800,
-                fontSize: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              ⚡ <span>KeyMech Admin</span>
+    <div className="km-portal-shell">
+      <header className="km-portal-header">
+        <div className="km-portal-header-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
+            <Link to="/admin" className="km-brand" style={{ fontSize: '18px' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M9 15h6" strokeLinecap="round" />
+              </svg>
+              <span>KeyMech Admin</span>
             </Link>
 
-            <nav
-              aria-label="Admin Navigation"
-              style={{ display: 'flex', gap: '0.75rem' }}
-            >
-              <NavLink
-                to="/admin"
-                end
-                style={({ isActive }) => ({
-                  color: isActive ? '#a5b4fc' : '#cbd5e1',
-                  textDecoration: 'none',
-                  fontSize: '0.9rem',
-                  fontWeight: isActive ? 600 : 400,
-                  padding: '0.35rem 0.65rem',
-                  borderRadius: '4px',
-                  backgroundColor: isActive ? 'rgba(165, 180, 252, 0.15)' : 'transparent',
-                })}
-              >
-                Tổng quan Dashboard
+            <nav className="km-portal-nav" aria-label="Điều hướng quản trị">
+              <NavLink to="/admin" end className={({ isActive }) => `km-portal-nav-link ${isActive ? 'active' : ''}`}>
+                Dashboard
               </NavLink>
-              <NavLink
-                to="/admin/staff"
-                style={({ isActive }) => ({
-                  color: isActive ? '#a5b4fc' : '#cbd5e1',
-                  textDecoration: 'none',
-                  fontSize: '0.9rem',
-                  fontWeight: isActive ? 600 : 400,
-                  padding: '0.35rem 0.65rem',
-                  borderRadius: '4px',
-                  backgroundColor: isActive ? 'rgba(165, 180, 252, 0.15)' : 'transparent',
-                })}
-              >
-                Quản lý người dùng
+              <NavLink to="/admin/staff" className={({ isActive }) => `km-portal-nav-link ${isActive ? 'active' : ''}`}>
+                Người dùng
               </NavLink>
-              <NavLink
-                to="/admin/reports"
-                style={({ isActive }) => ({
-                  color: isActive ? '#a5b4fc' : '#cbd5e1',
-                  textDecoration: 'none',
-                  fontSize: '0.9rem',
-                  fontWeight: isActive ? 600 : 400,
-                  padding: '0.35rem 0.65rem',
-                  borderRadius: '4px',
-                  backgroundColor: isActive ? 'rgba(165, 180, 252, 0.15)' : 'transparent',
-                })}
-              >
-                Báo cáo doanh thu
+              <NavLink to="/admin/categories" className={({ isActive }) => `km-portal-nav-link ${isActive ? 'active' : ''}`}>
+                Danh mục
               </NavLink>
-              <NavLink
-                to="/staff"
-                style={{
-                  color: '#93c5fd',
-                  textDecoration: 'none',
-                  fontSize: '0.9rem',
-                  padding: '0.35rem 0.65rem',
-                }}
-              >
-                Sang khu vực Staff →
+              <NavLink to="/staff/products" className="km-portal-nav-link">
+                Sản phẩm
+              </NavLink>
+              <NavLink to="/staff" className="km-portal-nav-link">
+                Khu Staff →
               </NavLink>
             </nav>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link
-              to="/"
-              style={{
-                color: '#94a3b8',
-                fontSize: '0.85rem',
-                textDecoration: 'none',
-              }}
-            >
-              ← Về Cửa hàng
+          <div className="km-user-pill">
+            <Link to="/" className="km-nav-link">
+              ← Cửa hàng
             </Link>
-            <span style={{ fontSize: '0.85rem', color: '#c7d2fe' }}>
-              {user?.fullName || user?.email} (Admin)
+            <span className="km-user-name" style={{ fontSize: 'var(--text-sm)' }}>
+              {user?.fullName || user?.email}
             </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                backgroundColor: '#312e81',
-                color: '#ffffff',
-                border: 'none',
-                padding: '0.4rem 0.75rem',
-                borderRadius: '4px',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={handleLogout} className="km-logout-btn">
               Đăng xuất
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <main
-        style={{
-          flex: 1,
-          maxWidth: '1360px',
-          width: '100%',
-          margin: '0 auto',
-          padding: '1.5rem 1rem',
-        }}
-      >
+      <main className="km-portal-main">
         <Outlet />
       </main>
     </div>

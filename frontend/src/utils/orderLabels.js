@@ -1,5 +1,5 @@
 export const orderStatusLabels = {
-  NEW: 'Chờ xác nhận',
+  NEW: 'Mới',
   CONFIRMED: 'Đã xác nhận',
   SHIPPING: 'Đang giao',
   COMPLETED: 'Hoàn thành',
@@ -7,11 +7,21 @@ export const orderStatusLabels = {
 };
 
 export const paymentMethodLabels = {
-  COD: 'Thanh toán khi nhận hàng',
-  BANK_TRANSFER: 'Chuyển khoản',
+  COD: 'Thanh toán khi nhận hàng (COD)',
+  BANK_TRANSFER: 'Chuyển khoản ngân hàng',
 };
 
 export const paymentStatusLabels = {
   UNPAID: 'Chưa thanh toán',
   PAID: 'Đã thanh toán',
+};
+
+export const customStatusLabels = {
+  PENDING: 'Chờ tiếp nhận',
+  QUOTED: 'Đã báo giá',
+  ACCEPTED: 'Khách đã đồng ý',
+  IN_PROGRESS: 'Đang lắp ráp',
+  COMPLETED: 'Hoàn thành',
+  REJECTED: 'Từ chối',
+  CANCELLED: 'Đã hủy',
 };

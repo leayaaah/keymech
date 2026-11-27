@@ -11,6 +11,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
@@ -81,6 +83,16 @@ public class GlobalExceptionHandler {
         String msg = e.getBindingResult().getFieldErrors().stream()
             .map(f -> f.getDefaultMessage()).collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", msg);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> uploadTooLarge() {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "IMAGE_TOO_LARGE", "Dung lượng ảnh tối đa là 2 MB.");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponse> invalidUpload() {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Dữ liệu tải lên không hợp lệ");
     }
 
     @ExceptionHandler(Exception.class)
