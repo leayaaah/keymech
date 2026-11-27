@@ -12,14 +12,24 @@
 # 1. Khởi động MariaDB + MailHog
 docker compose up -d
 
-# 2. Tạo file .env từ mẫu và điền giá trị thật
-cp .env.example .env
+# 2. Tạo file .env từ mẫu (PowerShell)
+Copy-Item .env.example .env
 
-# 3. Chạy backend
-cd backend
-export $(grep -v '^#' ../.env | xargs)    # Git Bash / WSL
-./mvnw spring-boot:run
+# 3. Chạy backend (PowerShell)
+./backend/run-dev.ps1
+
+# Chạy test (Docker DB cần đang chạy); có thể chọn một lớp test
+./backend/test-dev.ps1 -TestName PostUiApiIntegrationTests
+
+# 4. Chạy frontend trong một terminal khác
+cd frontend
+npm ci
+npm run dev
 ```
+
+Mặc định MariaDB dùng cổng host `3311`, tránh xung đột với MySQL đang dùng `3306`;
+MailHog nhận thư tại `http://localhost:8025`. Nếu đổi cổng DB, cập nhật đồng thời
+`DB_HOST_PORT` và cổng trong `DB_URL` ở `.env`.
 
 ## Cấu trúc
 

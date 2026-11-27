@@ -604,8 +604,8 @@ Người viết chức năng không nên là người kiểm thử duy nhất c�
 | TC-SEC-18 | Người đã đăng nhập gọi `POST /api/auth/register` | 403 | SRS |
 | TC-SEC-19 | Guest có giỏ, đăng nhập bằng tài khoản Staff | Session id đổi, giỏ bị xóa | SRS |
 | TC-CUS-08 | Customer gọi `/api/staff/custom-requests/{id}/status` | 403 | Staff |
-| TC-CUS-09 | Customer xem yêu cầu Custom của người khác | 403 hoặc 404 | Staff |
-| TC-CUS-10 | Customer đồng ý báo giá của yêu cầu người khác | 403 hoặc 404 | SRS |
+| TC-CUS-09 | Customer xem yêu cầu Custom của người khác | 404 `NOT_FOUND` | Quyền sở hữu; không tiết lộ yêu cầu có tồn tại |
+| TC-CUS-10 | Customer đồng ý báo giá của yêu cầu người khác | 404 `NOT_FOUND` | Quyền sở hữu; không tiết lộ yêu cầu có tồn tại |
 | TC-CUS-11 | Customer đồng ý khi yêu cầu đang `PENDING` | 409 `INVALID_TRANSITION` | SRS |
 | TC-CUS-12 | Staff gọi `PUT /api/custom-requests/my/{id}/accept`, hoặc chuyển `QUOTED` sang `ACCEPTED` qua `/api/staff/**` | 403 | SRS |
 | TC-CUS-13 | Staff báo lại giá, Customer đồng ý với giá cũ | 409 `QUOTE_CHANGED` | SRS |

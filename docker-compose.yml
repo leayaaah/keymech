@@ -1,18 +1,26 @@
 services:
   db:
     image: mariadb:11.8
+    restart: unless-stopped
     environment:
       MARIADB_DATABASE: keymech
       MARIADB_USER: ${DB_USERNAME:-shop}
       MARIADB_PASSWORD: ${DB_PASSWORD:-change-me}
       MARIADB_ROOT_PASSWORD: root-change-me
-    ports: ["3306:3306"]
+    ports: ["127.0.0.1:${DB_HOST_PORT:-3311}:3306"]
     volumes:
       - dbdata:/var/lib/mysql
       - ./database/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./database/02-data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
   mailhog:
     image: mailhog/mailhog
+    restart: unless-stopped
     ports: ["1025:1025", "8025:8025"]
 volumes:
   dbdata:

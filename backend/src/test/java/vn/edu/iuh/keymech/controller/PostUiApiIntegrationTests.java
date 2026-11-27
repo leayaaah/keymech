@@ -118,6 +118,27 @@ class PostUiApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACCEPTED"))
                 .andExpect(jsonPath("$.history[0].toStatus").value("ACCEPTED"));
+
+        mvc.perform(put(assigned + "/status").with(staff).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {"status":"IN_PROGRESS","note":"Đã bắt đầu lắp ráp"}
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+        mvc.perform(put(assigned + "/status").with(staff).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {"status":"COMPLETED","note":"Đã hoàn thiện bàn phím"}
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+        mvc.perform(get(mine).with(customer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.history.length()").value(5))
+                .andExpect(jsonPath("$.history[0].toStatus").value("COMPLETED"))
+                .andExpect(jsonPath("$.history[1].toStatus").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.history[2].toStatus").value("ACCEPTED"))
+                .andExpect(jsonPath("$.history[3].toStatus").value("QUOTED"))
+                .andExpect(jsonPath("$.history[4].toStatus").value("PENDING"));
     }
 
     @Test
