@@ -30,10 +30,17 @@ export const staffProductApi = {
   },
 
   update(id, payload, imageFile = null) {
+    // Form sửa KHÔNG gửi tồn kho — tránh ghi đè giá trị khách vừa checkout (xem UpdateProductInput).
+    const { stockQuantity: _stockQuantity, ...rest } = payload;
     return axiosClient.put(
       `/staff/products/${encodeURIComponent(id)}`,
-      buildProductFormData(payload, imageFile)
+      buildProductFormData(rest, imageFile)
     );
+  },
+
+  /** A-01: điều chỉnh tồn kho — thao tác chủ đích, riêng biệt với form sửa. */
+  updateStock(id, stockQuantity) {
+    return axiosClient.patch(`/staff/products/${encodeURIComponent(id)}/stock`, { stockQuantity });
   },
 
   toggleVisibility(id, status) {
