@@ -31,12 +31,29 @@ public class RuleBasedChatbotService implements ChatbotService {
         "clicky", "keycap", "switch", "kit");
     private static final List<String> SUGGESTIONS = List.of(
         "Phím 75% dưới 2 triệu", "Switch linear", "Tư vấn Custom");
+    private static final Pattern HOT_SWAP = Pattern.compile("\\bhot[\\s-]*swap(?:pable|able)?\\b");
+    private static final Pattern SOLDERED = Pattern.compile("\\b(?:mach han|pcb han|han switch|switch han|solder(?:ed)?)\\b");
+    private static final Pattern PIN_COUNT = Pattern.compile("\\b[35]\\s*-?\\s*(?:chan|pins?)\\b");
+    private static final Pattern KEYCAP = Pattern.compile("\\bkeycaps?\\b");
+    private static final Pattern SWITCH = Pattern.compile("\\bswitch(?:es)?\\b");
+    private static final Pattern COMPATIBILITY = Pattern.compile(
+        "\\b(?:tuong thich|khop|co vua|vua voi|co hop|(?:lap|gan|dung|thay|vua)\\b.{0,85}\\b(?:duoc|khong))\\b");
+    private static final Pattern EXPLANATION = Pattern.compile(
+        "\\b(?:la gi|la sao|dung de lam gi|khac nhau|phan biet|cach chon|chon the nao|chon nhu the nao)\\b");
+    private static final Pattern SHOPPING = Pattern.compile(
+        "\\b(?:mua|tim (?:ban phim|phim|switch|keycap)|goi y|gia bao nhieu|bao nhieu tien|ngan sach|duoi)\\b");
+    private static final Pattern CUSTOM_BUILD = Pattern.compile(
+        "\\b(?:custom|lap rap|tu lap|tu build|build (?:phim|ban phim)|(?:phim|ban phim) theo yeu cau)\\b");
+    private static final Pattern QUIET_TYPING = Pattern.compile(
+        "\\b(?:go em|go yen tinh|it on|bot on|giam on|it tieng|silent)\\b");
 
     private final ChatProductRepository products;
+    private final CustomComponentRecommendations customComponents;
     private final Map<String, String> intents;
 
     public RuleBasedChatbotService(ChatProductRepository products, ObjectMapper mapper) {
         this.products = products;
+        this.customComponents = new CustomComponentRecommendations(mapper);
         try (InputStream input = new ClassPathResource("chatbot/chatbot-intents.json").getInputStream()) {
             this.intents = mapper.readValue(input, new TypeReference<Map<String, String>>() {});
         } catch (Exception e) {
@@ -51,16 +68,17 @@ public class RuleBasedChatbotService implements ChatbotService {
         if (containsAny(text, "xin chao", "chao ban", "hello")) {
             return response("greeting", List.of());
         }
-        if (containsAny(text, "custom", "lap rap", "tu lap")) {
+        if (containsAny(text, "thoi tiet", "troi mua", "hom nay co mua", "bong da", "system prompt")) {
+            return outOfScope();
+        }
+        ChatResponse advice = componentAdvice(text);
+        if (advice != null) return advice;
+        if (CUSTOM_BUILD.matcher(text).find()) {
             return response("custom", List.of());
         }
         if (containsAny(text, "bao hanh", "doi tra", "van chuyen", "giao hang")) {
             return response("policy", List.of());
         }
-        if (containsAny(text, "thoi tiet", "troi mua", "hom nay co mua", "bong da", "system prompt")) {
-            return outOfScope();
-        }
-
         String layout = layout(text);
         BigDecimal maxPrice = budget(text);
         String term = TERMS.stream().filter(text::contains).findFirst().orElse(null);
@@ -82,6 +100,52 @@ public class RuleBasedChatbotService implements ChatbotService {
 
     ChatResponse outOfScope() {
         return response("outOfScope", List.of());
+    }
+
+    ChatResponse componentAdvice(String text) {
+        if (CUSTOM_BUILD.matcher(text).find() && !EXPLANATION.matcher(text).find()) {
+            ChatResponse build = customBuildAdvice(text);
+            if (build != null) return build;
+        }
+        return compatibilityFaq(text);
+    }
+
+    private ChatResponse customBuildAdvice(String text) {
+        String requestedLayout = layout(text);
+        BigDecimal requestedBudget = budget(text);
+        boolean quiet = QUIET_TYPING.matcher(text).find();
+        if (requestedLayout == null && requestedBudget == null && !quiet
+                && !containsAny(text, "cau hinh", "tung linh kien", "chon linh kien")) {
+            return null;
+        }
+
+        String layoutLabel = requestedLayout == null ? "theo layout bạn chọn" : "layout " + requestedLayout;
+        String budgetLabel = requestedBudget == null ? "" : " với ngân sách "
+            + CustomComponentRecommendations.money(requestedBudget);
+        var choice = customComponents.recommend(products.findPublicProducts(), requestedLayout, requestedBudget, quiet);
+        String answer = intents.get("customBuild").formatted(layoutLabel, budgetLabel, choice.kit(), choice.pcb(),
+            choice.switches(), choice.stabilizer(), choice.keycap(), choice.total());
+        return new ChatResponse(answer, choice.products(), SUGGESTIONS, "rule");
+    }
+
+    private ChatResponse compatibilityFaq(String text) {
+        boolean compatible = COMPATIBILITY.matcher(text).find();
+        boolean explanation = EXPLANATION.matcher(text).find();
+        if (!compatible && !explanation && SHOPPING.matcher(text).find()) return null;
+        if (KEYCAP.matcher(text).find() && (compatible || explanation || text.equals("keycap"))) {
+            return response(compatible ? "keycapCompatibility" : "keycapFaq", List.of());
+        }
+        if (compatible && SWITCH.matcher(text).find()
+                && containsAny(text, "switch nay", "switch do", "tuong thich", "lap", "gan", "dung")) {
+            return response("switchCompatibility", List.of());
+        }
+        if (PIN_COUNT.matcher(text).find()) return response("switchPinsFaq", List.of());
+        if (SOLDERED.matcher(text).find() || HOT_SWAP.matcher(text).find()) return response("hotSwapFaq", List.of());
+        if (compatible && SWITCH.matcher(text).find()) return response("switchCompatibility", List.of());
+        if (compatible && containsAny(text, "linh kien", "phu kien", "custom")) {
+            return response("componentCompatibility", List.of());
+        }
+        return null;
     }
 
     static String normalize(String value) {

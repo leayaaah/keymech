@@ -1,6 +1,7 @@
 package vn.edu.iuh.keymech.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -100,6 +101,17 @@ class ChatbotRagIntegrationTests {
             .andExpect(jsonPath("$.products[0].inStock").value(true))
             .andExpect(jsonPath("$.products[0].url").value("/products/" + id));
         assertThat(CHAT_BODY.get().toLowerCase()).doesNotContain("andreaprivate");
+
+        CHAT_BODY.set(null);
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(Map.of("message", "Hot-swap khác mạch hàn thế nào?"))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("rule"))
+            .andExpect(jsonPath("$.answer").value(containsString("không cần hàn")));
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(Map.of("message", "Tư vấn custom cấu hình 75%"))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("rule"))
+            .andExpect(jsonPath("$.answer").value(containsString("Gợi ý từ shop")));
+        assertThat(CHAT_BODY.get()).isNull();
 
         // Mô phỏng giá và tồn kho đổi trước khi worker cập nhật vector.
         jdbc.update("UPDATE products SET price = ?, stock_quantity = 0 WHERE id = ?", 1_700_000, id);

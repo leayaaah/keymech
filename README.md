@@ -27,6 +27,9 @@ mvn spring-boot:run
 - Chỉ mục được khởi tạo bất đồng bộ khi backend sẵn sàng nếu chưa có tài liệu kiến thức. Các thao tác tạo, sửa, ẩn và hiện sản phẩm cập nhật chỉ mục sau khi giao dịch lưu sản phẩm thành công. Chatbot dùng câu trả lời `rule` khi RAG thiếu ngữ cảnh, gặp lỗi hoặc hết 8 giây.
 - `POST /api/admin/chatbot/reindex` dựng lại chỉ mục sản phẩm công khai và tài liệu kiến thức sau khi nhập dữ liệu bằng SQL, đổi model embedding hoặc cập nhật danh mục trong chế độ `rule`. Gửi cookie phiên Admin, không cần body. Phản hồi `200` có dạng `{"indexedDocuments":35}`. Guest nhận `401`, Customer và Staff nhận `403`. Nếu có lượt cập nhật đang chạy, endpoint trả `409 CHATBOT_INDEX_BUSY`. Khi AI tắt, thiếu khóa hoặc không dựng được chỉ mục, endpoint trả `503` với `CHATBOT_AI_DISABLED` hoặc `CHATBOT_INDEX_FAILED`.
 - Gemini nhận từ vựng tư vấn đã lọc cùng dữ liệu danh mục công khai. Lịch sử trò chuyện vẫn lưu trong phiên và không được gửi tới Gemini. Cá nhân hóa chưa thuộc nhánh này.
+- FAQ về mạch hàn, hot-swap, chân switch và keycap trả lời trực tiếp ở cả hai chế độ. Nếu chỉ mục AI đã tồn tại, Admin có thể gọi reindex để đưa bản cập nhật tài liệu linh kiện vào RAG.
+- Tư vấn cấu hình Custom lấy linh kiện đang hiển thị và còn hàng từ danh mục. Khi biết số phím và số switch mỗi gói, chatbot tính số gói cần mua. Giá tạm tính chỉ gồm các sản phẩm được gợi ý.
+- Nút “Thêm tất cả vào giỏ hàng” thêm các món còn hàng theo `products[].quantity` trong kết quả chat. Nếu một món bị từ chối vì tồn kho thay đổi, có thể thử lại các món chưa thêm.
 - Để chạy `ChatbotRagIntegrationTests`, đặt `RAG_TEST_DB_URL`, `RAG_TEST_DB_USERNAME` và `RAG_TEST_DB_PASSWORD` trỏ tới MariaDB thử nghiệm riêng đã nạp `01-schema.sql`. Test ghi sản phẩm và dựng lại `vector_store` bằng Gemini giả lập trên máy.
 - Chạy `postman collection run docs/chatbot.postman_collection.json` từ thư mục gốc để kiểm tra lời chào và quyền Guest trên backend đang chạy ở cổng 8080.
 

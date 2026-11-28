@@ -90,6 +90,8 @@ public class AiChatbotService implements ChatbotService {
         if (GREETING.matcher(normalized).matches() || PRIVATE_INPUT.matcher(normalized).find()) {
             return rule.reply(question);
         }
+        ChatResponse advice = rule.componentAdvice(normalized);
+        if (advice != null) return advice;
 
         Future<ChatResponse> task = null;
         try {
