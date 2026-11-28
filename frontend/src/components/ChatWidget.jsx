@@ -43,7 +43,7 @@ function ChatProductRecommendations({ message, addingMessage, onAdd, onOpenProdu
           </div>
         </Link>
       ))}
-      {inStock.length > 0 && (
+      {inStock.length > 0 && message.intent !== 'customAlternatives' && (
         <>
           {inStock.length < products.length && <p className="km-field-hint">Chỉ thêm các món còn hàng.</p>}
           <button
@@ -74,6 +74,7 @@ export function ChatWidget() {
   const [addingMessage, setAddingMessage] = useState(null);
   const addingToCart = useRef(false);
   const loadedHistory = useRef(false);
+  const chatContext = useRef(null);
   const chatBodyRef = useRef(null);
   const lastMessageRef = useRef(null);
   const endRef = useRef(null);
@@ -85,7 +86,7 @@ export function ChatWidget() {
       .getHistory()
       .then((history) => {
         if (Array.isArray(history) && history.length > 0) {
-          setMessages(history);
+          setMessages((previous) => previous.length === 0 ? history : previous);
         }
       })
       .catch(() => {
@@ -117,12 +118,14 @@ export function ChatWidget() {
     setSending(true);
 
     try {
-      const res = await chatApi.sendMessage(text);
+      const res = await chatApi.sendMessage(text, chatContext.current);
+      chatContext.current = res?.context ?? null;
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: res?.answer || 'Xin lỗi, tôi chưa tìm thấy câu trả lời phù hợp.',
+          intent: res?.intent,
           products: Array.isArray(res?.products) ? res.products : [],
         },
       ]);

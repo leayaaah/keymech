@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterAll;
@@ -39,10 +38,11 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.convention.TestBean;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
-import vn.edu.iuh.keymech.dto.CategoryResponse;
+import tools.jackson.databind.JsonNode;
 import vn.edu.iuh.keymech.dto.product.StaffProductInput;
 import vn.edu.iuh.keymech.model.enums.VisibilityStatus;
 import vn.edu.iuh.keymech.service.CatalogManagementService;
@@ -56,10 +56,11 @@ class ChatbotRagIntegrationTests {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final AtomicBoolean PROVIDER_ERROR = new AtomicBoolean();
     private static final AtomicBoolean SLOW_CHAT = new AtomicBoolean();
-    private static final AtomicLong PRODUCT_ID = new AtomicLong();
     private static final AtomicReference<String> CHAT_BODY = new AtomicReference<>();
+    private static final AtomicReference<String> ANSWER = new AtomicReference<>();
     private static final String VALUES = "1," + String.join(",", Collections.nCopies(767, "0"));
     private static final String UNRELATED_VALUES = "0,1," + String.join(",", Collections.nCopies(766, "0"));
+    private static final String BORDERLINE_VALUES = "0.62,0.78460181," + String.join(",", Collections.nCopies(766, "0"));
     private static HttpServer gemini;
 
     @TestBean(name = "geminiClient", methodName = "fakeClient")
@@ -87,12 +88,16 @@ class ChatbotRagIntegrationTests {
         mvc.perform(post(REINDEX)).andExpect(status().isUnauthorized());
         mvc.perform(post(REINDEX).with(user("staff").roles("STAFF"))).andExpect(status().isForbidden());
         mvc.perform(post(REINDEX).with(user("customer").roles("CUSTOMER"))).andExpect(status().isForbidden());
+        verifyCustomConversation(mvc);
 
-        String suffix = UUID.randomUUID().toString();
-        var category = catalog.createCategory(new CategoryResponse.Create("RAG fixture " + suffix, "rag-" + suffix));
-        long id = catalog.createProduct(product(category.id(), "RAG Keychron", 1_500_000, 2)).id();
-        PRODUCT_ID.set(id);
-        await(() -> indexed(id) == 1);
+        long categoryId = jdbc.queryForObject("SELECT id FROM categories WHERE slug = 'ban-phim-co'", Long.class);
+        String fixtureName = "RAG Keychron " + UUID.randomUUID();
+        long id = catalog.createProduct(product(categoryId, fixtureName, 1_500_000, 2)).id();
+        long borderlineId = catalog.createProduct(product(categoryId, "RAG Borderline", 1_600_000, 2)).id();
+        long expensiveId = catalog.createProduct(product(categoryId, "RAG Keychron quá ngân sách", 2_700_000, 2)).id();
+        long accessoryCategoryId = jdbc.queryForObject("SELECT id FROM categories WHERE slug = 'dung-cu-phu-kien'", Long.class);
+        long accessoryId = catalog.createProduct(product(accessoryCategoryId, "RAG Keychron Kê tay", 250_000, 2)).id();
+        await(() -> indexed(id) == 1 && indexed(borderlineId) == 1 && indexed(expensiveId) == 1 && indexed(accessoryId) == 1);
         var question = post("/api/chat").contentType(MediaType.APPLICATION_JSON)
             .content("{\"message\":\"Tư vấn phím Keychron 75% dưới 2 triệu, Andreaprivate\"}");
         mvc.perform(question).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("ai"))
@@ -100,7 +105,15 @@ class ChatbotRagIntegrationTests {
             .andExpect(jsonPath("$.products[0].price").value(1_500_000))
             .andExpect(jsonPath("$.products[0].inStock").value(true))
             .andExpect(jsonPath("$.products[0].url").value("/products/" + id));
-        assertThat(CHAT_BODY.get().toLowerCase()).doesNotContain("andreaprivate");
+        assertThat(CHAT_BODY.get().toLowerCase()).doesNotContain("andreaprivate", "rag keychron", "keychron", "2000000");
+
+        ANSWER.set(fixtureName + " hợp bàn nhỏ.");
+        try {
+            mvc.perform(question).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("rule"))
+                .andExpect(jsonPath("$.products[0].id").value(id));
+        } finally {
+            ANSWER.set(null);
+        }
 
         CHAT_BODY.set(null);
         mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
@@ -130,11 +143,11 @@ class ChatbotRagIntegrationTests {
         }
         assertThat(CHAT_BODY.get()).isNull();
 
-        catalog.updateProduct(id, product(category.id(), "RAG Keychron Updated", 2_500_000, 0));
+        catalog.updateProduct(id, product(categoryId, "RAG Keychron Updated", 2_500_000, 0));
         await(() -> count("SELECT COUNT(*) FROM vector_store WHERE JSON_VALUE(metadata, '$.productId') = ? "
             + "AND content LIKE '%Updated%'", id) == 1);
-        mvc.perform(question).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("ai"))
-            .andExpect(jsonPath("$.products.length()").value(0));
+        mvc.perform(question).andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[*].id").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem((int) id))));
 
         catalog.changeProductVisibility(id, VisibilityStatus.HIDDEN);
         await(() -> indexed(id) == 0);
@@ -159,11 +172,43 @@ class ChatbotRagIntegrationTests {
         SLOW_CHAT.set(true);
         try {
             long started = System.nanoTime();
-            mvc.perform(question).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("rule"));
+            mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"message\":\"Linear và tactile khác nhau thế nào?\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("rule"));
             assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(11));
         } finally {
             SLOW_CHAT.set(false);
         }
+    }
+
+    private void verifyCustomConversation(MockMvc mvc) throws Exception {
+        var first = chat(mvc, "Phím 75% dưới 2 triệu", null);
+        assertThat(first.path("products").values().stream().map(card -> card.path("price").asInt()))
+            .containsExactly(1_590_000, 1_890_000);
+        var custom = chat(mvc, "Tư vấn Custom", first.path("context"));
+        assertThat(custom.path("intent").asString()).isEqualTo("custom");
+        assertThat(custom.path("products").size()).isZero();
+        assertThat(custom.path("answer").asString()).contains("layout", "switch", "ngân sách");
+        var build = chat(mvc, "Custom kit 75%, gõ êm, switch red", custom.path("context"));
+        assertThat(build.path("context").path("switchName").asString()).isEqualTo("red");
+        assertThat(build.path("answer").asString()).contains("Cherry MX Red", "Cần 3 gói", "silent", "Ngân sách")
+            .doesNotContain("Gateron Yellow");
+        var followUp = chat(mvc, "Dưới 3tr có không", build.path("context"));
+        assertThat(followUp.path("intent").asString()).isEqualTo("customAlternatives");
+        assertThat(followUp.path("context").path("budget").asInt()).isEqualTo(3_000_000);
+        assertThat(followUp.path("answer").asString()).contains("vượt ít nhất 2.430.000", "Cherry MX Red", "có hot-swap");
+        assertThat(followUp.path("products").values().stream().map(card -> card.path("price").asInt()))
+            .containsExactly(1_590_000, 1_890_000, 2_200_000);
+        assertThat(chat(mvc, "Có không nào dưới 3tr?", null).path("intent").asString()).isEqualTo("clarify");
+        assertThat(chat(mvc, "Phím 65% dưới 2 triệu", followUp.path("context")).path("context").isNull()).isTrue();
+    }
+
+    private JsonNode chat(MockMvc mvc, String message, JsonNode previousContext) throws Exception {
+        var request = JSON.createObjectNode().put("message", message);
+        if (previousContext != null) request.set("context", previousContext);
+        return JSON.readTree(mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsBytes(request))).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsByteArray());
     }
 
     private StaffProductInput product(long categoryId, String name, int price, int stock) {
@@ -205,7 +250,9 @@ class ChatbotRagIntegrationTests {
                 for (var item : JSON.readTree(request).path("requests")) {
                     String input = item.path("content").path("parts").path(0).path("text").asString();
                     boolean unrelated = input.contains("\n") && !input.startsWith("## ") && !input.startsWith("RAG Keychron");
-                    embeddings.add("{\"values\":[" + (unrelated ? UNRELATED_VALUES : VALUES) + "]}");
+                    String embedding = input.startsWith("RAG Borderline") ? BORDERLINE_VALUES
+                        : unrelated ? UNRELATED_VALUES : VALUES;
+                    embeddings.add("{\"values\":[" + embedding + "]}");
                 }
                 send(exchange, 200, embeddings.toString());
             } else if (operation.endsWith(":embedContent")) {
@@ -221,7 +268,7 @@ class ChatbotRagIntegrationTests {
                     }
                 }
                 String answer = JSON.writeValueAsString(new AiChatbotService.ChatAnswer(
-                    "Layout gọn phù hợp với bàn làm việc.", List.of(PRODUCT_ID.get(), Long.MAX_VALUE)));
+                    ANSWER.get() == null ? "Layout gọn phù hợp với bàn làm việc." : ANSWER.get()));
                 send(exchange, 200, "{\"modelVersion\":\"fake-test-model\",\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":"
                     + JSON.writeValueAsString(answer) + "}]},\"finishReason\":\"STOP\"}]}");
             } else {

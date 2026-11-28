@@ -10,6 +10,7 @@
   "componentCompatibility": "Bạn muốn kiểm tra switch hay keycap? Hãy gửi model và phiên bản bàn phím hoặc PCB, cùng tên linh kiện đang xem. Với keycap, cho mình thêm kiểu stem của switch và bố trí phím thực tế. Nếu chưa biết model, bạn có thể ghi nhu cầu trong form Custom để nhân viên xác nhận khi báo giá.",
   "policy": "Mình chưa có thông tin chính sách cụ thể để xác nhận. Bạn vui lòng liên hệ cửa hàng; mình có thể giúp chọn sản phẩm phù hợp.",
   "outOfScope": "Xin lỗi, mình chỉ tư vấn bàn phím cơ và phụ kiện. Bạn muốn tìm theo layout hoặc ngân sách nào?",
+  "clarify": "Bạn muốn tìm bàn phím lắp sẵn, switch, phụ kiện hay tư vấn Custom? Cho mình biết layout hoặc nhu cầu cụ thể nhé.",
   "recommend": "Đây là các sản phẩm đang hiển thị phù hợp với thông tin bạn cung cấp. Giá và tình trạng hàng được lấy từ cửa hàng.",
   "noResults": "Mình chưa tìm thấy sản phẩm phù hợp. Bạn thử đổi layout, từ khóa hoặc ngân sách nhé."
 }

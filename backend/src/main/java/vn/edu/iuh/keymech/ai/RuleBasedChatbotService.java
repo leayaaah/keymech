@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import vn.edu.iuh.keymech.dto.ChatProductResponse;
+import vn.edu.iuh.keymech.dto.ChatContext;
 import vn.edu.iuh.keymech.dto.ChatResponse;
 import vn.edu.iuh.keymech.repository.ChatProductRepository;
 
@@ -46,6 +47,19 @@ public class RuleBasedChatbotService implements ChatbotService {
         "\\b(?:custom|lap rap|tu lap|tu build|build (?:phim|ban phim)|(?:phim|ban phim) theo yeu cau)\\b");
     private static final Pattern QUIET_TYPING = Pattern.compile(
         "\\b(?:go em|go yen tinh|it on|bot on|giam on|it tieng|silent)\\b");
+    private static final Pattern NO_QUIET = Pattern.compile(
+        "\\b(?:khong can|khong muon|khong phai)\\s+(?:go em|silent|yen tinh)\\b");
+    private static final Pattern SWITCH_NAME = Pattern.compile("\\b" + ChatContext.SWITCH_NAME + "\\b");
+    private static final Pattern RESET_SWITCH = Pattern.compile("\\b(?:switch nao cung duoc|khong can switch co dinh)\\b");
+    private static final Pattern FOLLOW_UP_WORDS = Pattern.compile(
+        "\\b(?:ngan sach|co khong|duoc khong|co duoc khong|thi sao|switch(?:es)?|layout|"
+            + "doi sang|doi thanh|muon|chon|chi|toi da|tam|khoang|duoi|toi|con|co|khong|duoc|nhe|a|voi|minh|la)\\b");
+    private static final Pattern ACCESSORY = Pattern.compile(
+        "\\b(?:phu kien|ke tay|cap(?: sac| usb(?:[ -]c)?)|dung cu|puller|co rut|lube|stabilizer|pcb)\\b");
+    private static final Pattern ACCESSORY_REQUEST = Pattern.compile(
+        "(?:^|\\b(?:mua|tim|goi y|tu van)\\s+)" + ACCESSORY.pattern());
+    private static final Pattern KEYBOARD = Pattern.compile("\\b(?:ban phim|phim|keyboard)\\b");
+    private static final Pattern KIT = Pattern.compile("\\bkit\\b");
 
     private final ChatProductRepository products;
     private final CustomComponentRecommendations customComponents;
@@ -63,69 +77,149 @@ public class RuleBasedChatbotService implements ChatbotService {
 
     @Override
     @Transactional(readOnly = true)
-    public ChatResponse reply(String question) {
-        String text = normalize(question);
+    public ChatResponse reply(String question, ChatContext context) {
+        String text = normalize(question).strip();
         if (containsAny(text, "xin chao", "chao ban", "hello")) {
             return response("greeting", List.of());
         }
         if (containsAny(text, "thoi tiet", "troi mua", "hom nay co mua", "bong da", "system prompt")) {
             return outOfScope();
         }
-        ChatResponse advice = componentAdvice(text);
+        ChatResponse advice = componentAdvice(text, context);
         if (advice != null) return advice;
-        if (CUSTOM_BUILD.matcher(text).find()) {
-            return response("custom", List.of());
-        }
-        if (containsAny(text, "bao hanh", "doi tra", "van chuyen", "giao hang")) {
-            return response("policy", List.of());
-        }
         String layout = layout(text);
         BigDecimal maxPrice = budget(text);
-        String term = TERMS.stream().filter(text::contains).findFirst().orElse(null);
-        boolean shoppingQuestion = layout != null || maxPrice != null || term != null
-            || containsAny(text, "ban phim", "goi y", "tu van", "san pham", "gia", "mua", "phu kien");
-        if (!shoppingQuestion) {
-            return outOfScope();
-        }
+        String category = catalogCategory(text);
+        String term = catalogTerm(text, category);
+        if (category == null && layout == null && term == null) return clarify();
         List<ChatProductResponse> matches = products.recommend(
-                layout, maxPrice, term,
+                layout, maxPrice, term, category,
                 PageRequest.of(0, 6, Sort.by("price").ascending().and(Sort.by("id"))))
             .getContent().stream().map(ChatProductResponse::from).toList();
-        return response(matches.isEmpty() ? "noResults" : "recommend", matches);
+        return catalogResults(matches);
     }
 
     private ChatResponse response(String key, List<ChatProductResponse> matches) {
-        return new ChatResponse(intents.get(key), matches, SUGGESTIONS, "rule");
+        return new ChatResponse(intents.get(key), matches, SUGGESTIONS, "rule", null, key);
     }
 
     ChatResponse outOfScope() {
         return response("outOfScope", List.of());
     }
 
-    ChatResponse componentAdvice(String text) {
-        if (CUSTOM_BUILD.matcher(text).find() && !EXPLANATION.matcher(text).find()) {
-            ChatResponse build = customBuildAdvice(text);
-            if (build != null) return build;
-        }
-        return compatibilityFaq(text);
+    ChatResponse clarify() {
+        return response("clarify", List.of());
     }
 
-    private ChatResponse customBuildAdvice(String text) {
-        String requestedLayout = layout(text);
-        BigDecimal requestedBudget = budget(text);
-        boolean quiet = QUIET_TYPING.matcher(text).find();
-        if (requestedLayout == null && requestedBudget == null && !quiet
-                && !containsAny(text, "cau hinh", "tung linh kien", "chon linh kien")) {
-            return null;
-        }
+    ChatResponse catalogResults(List<ChatProductResponse> matches) {
+        return response(matches.isEmpty() ? "noResults" : "recommend", matches);
+    }
 
-        String layoutLabel = requestedLayout == null ? "theo layout bạn chọn" : "layout " + requestedLayout;
-        String budgetLabel = requestedBudget == null ? "" : " với ngân sách "
-            + CustomComponentRecommendations.money(requestedBudget);
-        var choice = customComponents.recommend(products.findPublicProducts(), requestedLayout, requestedBudget, quiet);
+    ChatResponse componentAdvice(String text, ChatContext context) {
+        ChatResponse followUp = followUp(text, context);
+        if (followUp != null) return followUp;
+        boolean custom = CUSTOM_BUILD.matcher(text).find();
+        ChatResponse faq = compatibilityFaq(text);
+        if (custom) {
+            var slots = slots(text);
+            if (context != null && followUpText(CUSTOM_BUILD.matcher(text).replaceAll(" "))) {
+                slots = merge(context, slots, text);
+            }
+            if (slots.layout() != null && !EXPLANATION.matcher(text).find()) return customBuildAdvice(slots);
+            if (faq != null) return faq;
+            return customPrompt(slots);
+        }
+        if (faq != null) return faq;
+        String requestedSwitch = switchName(text);
+        if (requestedSwitch != null && "switch".equals(catalogCategory(text)) && !isExplanation(text)) {
+            BigDecimal maxPrice = budget(text);
+            return catalogResults(products.findPublicProducts().stream()
+                .filter(p -> "switch".equals(p.getCategory().getSlug()) && matchesSwitch(p.getName(), requestedSwitch))
+                .filter(p -> maxPrice == null || p.getPrice().compareTo(maxPrice) <= 0)
+                .limit(6).map(ChatProductResponse::from).toList());
+        }
+        return containsAny(text, "bao hanh", "doi tra", "van chuyen", "giao hang")
+            ? response("policy", List.of()) : null;
+    }
+
+    private ChatResponse followUp(String text, ChatContext context) {
+        if (context == null || !followUpText(text)) return null;
+        var update = slots(text);
+        if (update.layout() == null && update.budget() == null && update.quiet() == null
+                && update.switchName() == null && !RESET_SWITCH.matcher(text).find()) return null;
+        var merged = merge(context, update, text);
+        return merged.layout() == null ? customPrompt(merged) : customBuildAdvice(merged);
+    }
+
+    private ChatResponse customPrompt(ChatContext slots) {
+        return new ChatResponse(intents.get("custom"), List.of(), SUGGESTIONS, "rule", slots, "custom");
+    }
+
+    private static boolean followUpText(String text) {
+        String remaining = BUDGET.matcher(LAYOUT.matcher(text).replaceAll(" ")).replaceAll(" ");
+        remaining = NO_QUIET.matcher(remaining).replaceAll(" ");
+        remaining = QUIET_TYPING.matcher(remaining).replaceAll(" ");
+        remaining = SWITCH_NAME.matcher(RESET_SWITCH.matcher(remaining).replaceAll(" ")).replaceAll(" ");
+        return FOLLOW_UP_WORDS.matcher(remaining).replaceAll(" ").replaceAll("[\\p{Punct}\\s]+", "").isEmpty();
+    }
+
+    private static ChatContext slots(String text) {
+        Boolean quiet = null;
+        if (NO_QUIET.matcher(text).find()) quiet = false;
+        else if (QUIET_TYPING.matcher(text).find()) quiet = true;
+        return new ChatContext(layout(text), budget(text), quiet, switchName(text));
+    }
+
+    private static ChatContext merge(ChatContext previous, ChatContext update, String text) {
+        return new ChatContext(update.layout() == null ? previous.layout() : update.layout(),
+            update.budget() == null ? previous.budget() : update.budget(),
+            update.quiet() == null ? previous.quiet() : update.quiet(),
+            RESET_SWITCH.matcher(text).find() ? null
+                : update.switchName() == null ? previous.switchName() : update.switchName());
+    }
+
+    private ChatResponse customBuildAdvice(ChatContext context) {
+        String layoutLabel = "layout " + context.layout();
+        String budgetLabel = context.budget() == null ? "" : " với ngân sách "
+            + CustomComponentRecommendations.money(context.budget());
+        var choice = customComponents.recommend(products.findPublicProducts(), context);
         String answer = intents.get("customBuild").formatted(layoutLabel, budgetLabel, choice.kit(), choice.pcb(),
             choice.switches(), choice.stabilizer(), choice.keycap(), choice.total());
-        return new ChatResponse(answer, choice.products(), SUGGESTIONS, "rule");
+        return new ChatResponse(answer, choice.products(), SUGGESTIONS, "rule", context,
+            choice.overBudget() ? "customAlternatives" : "customBuild");
+    }
+
+    static String catalogCategory(String text) {
+        if (ACCESSORY_REQUEST.matcher(text).find()
+                || (ACCESSORY.matcher(text).find() && !KEYBOARD.matcher(text).find())) return "dung-cu-phu-kien";
+        if (KIT.matcher(text).find()) return "kit-ban-phim";
+        if (KEYBOARD.matcher(text).find()) return "ban-phim-co";
+        if (SWITCH.matcher(text).find()) return "switch";
+        if (KEYCAP.matcher(text).find()) return "keycap";
+        return layout(text) == null ? null : "ban-phim-co";
+    }
+
+    private static String catalogTerm(String text, String category) {
+        if ("dung-cu-phu-kien".equals(category)) {
+            var match = ACCESSORY.matcher(text);
+            if (match.find() && !List.of("phu kien", "dung cu").contains(match.group())) return match.group();
+        }
+        return TERMS.stream().filter(text::contains).findFirst().orElse(null);
+    }
+
+    static boolean isExplanation(String text) {
+        return EXPLANATION.matcher(text).find();
+    }
+
+    private static String switchName(String text) {
+        var matcher = SWITCH_NAME.matcher(text);
+        return matcher.find() ? matcher.group() : null;
+    }
+
+    static boolean matchesSwitch(String name, String requested) {
+        String normalized = normalize(name).replaceAll("[^a-z0-9]+", " ").strip();
+        return Pattern.compile("\\b" + String.join("(?: \\w+)* ", requested.split(" ")) + "\\b")
+            .matcher(normalized).find();
     }
 
     private ChatResponse compatibilityFaq(String text) {
@@ -174,11 +268,11 @@ public class RuleBasedChatbotService implements ChatbotService {
         Matcher match = BUDGET.matcher(text);
         if (!match.find()) return null;
         String unit = match.group(2);
-        if (unit == null) {
-            return new BigDecimal(match.group(3).replace(".", "").replace(",", ""));
-        }
-        BigDecimal value = new BigDecimal(match.group(1).replace(',', '.'));
-        return value.multiply(unit.equals("trieu") || unit.equals("tr")
-            ? BigDecimal.valueOf(1_000_000) : BigDecimal.valueOf(1_000));
+        BigDecimal value = unit == null ? new BigDecimal(match.group(3).replace(".", "").replace(",", ""))
+            : new BigDecimal(match.group(1).replace(',', '.'))
+                .multiply(BigDecimal.valueOf(unit.equals("trieu") || unit.equals("tr") ? 1_000_000 : 1_000));
+        value = value.stripTrailingZeros();
+        return value.precision() - value.scale() <= 18 && value.scale() <= 2
+            ? value.setScale(Math.max(0, value.scale())) : null;
     }
 }

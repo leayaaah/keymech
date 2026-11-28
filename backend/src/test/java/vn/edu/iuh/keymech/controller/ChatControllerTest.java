@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import vn.edu.iuh.keymech.ai.ChatbotService;
+import vn.edu.iuh.keymech.dto.ChatContext;
 import vn.edu.iuh.keymech.dto.ChatResponse;
 import vn.edu.iuh.keymech.exception.GlobalExceptionHandler;
 import vn.edu.iuh.keymech.exception.RateLimitedException;
@@ -39,7 +41,7 @@ class ChatControllerTest {
     @DisplayName("TC-BOT-01: gửi câu hỏi và đọc lại lịch sử trong Session")
     void ask_success_storesSessionHistory() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        when(chatbot.reply("Phím 75%"))
+        when(chatbot.reply("Phím 75%", null))
             .thenReturn(new ChatResponse("Đây là gợi ý", List.of(), List.of(), "rule"));
 
         mvc.perform(post("/api/chat").session(session).contentType(MediaType.APPLICATION_JSON)
@@ -59,7 +61,18 @@ class ChatControllerTest {
                 .content("{\"message\":\"   \"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
-        verify(chatbot, never()).reply(anyString());
+        verify(chatbot, never()).reply(anyString(), any());
+    }
+
+    @Test
+    void ask_rejectsInvalidContext() throws Exception {
+        mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"message":"Dưới 3tr có không","context":{"layout":"75%","budget":-1,"switchName":"<invalid>"}}
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+        verify(chatbot, never()).reply(anyString(), any(ChatContext.class));
     }
 
     @Test
