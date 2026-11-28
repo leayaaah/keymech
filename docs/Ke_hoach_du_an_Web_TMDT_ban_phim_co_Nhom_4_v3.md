@@ -644,7 +644,8 @@ Người viết chức năng không nên là người kiểm thử duy nhất c�
 | `APP_UPLOAD_DIR` | Thư mục ảnh (`./uploads`) |
 | `VITE_API_URL` | Địa chỉ API cho React (`/api`) |
 | `GEMINI_API_KEY` | Khóa Gemini Developer API, không đưa vào Git |
-| `APP_CHATBOT_MODE` | `ai` (mặc định) hoặc `rule` |
+| `GEMINI_CHAT_MODEL` | Model chat Gemini, mặc định `gemini-3.5-flash-lite` |
+| `APP_CHATBOT_MODE` | `rule` (mặc định cho demo) hoặc `ai` |
 
 Dùng ba profile: `dev`, `test`, `prod` (demo cuối).
 

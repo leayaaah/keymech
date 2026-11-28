@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { cartApi } from '../api/cartApi';
 import chatApi from '../api/chatApi';
 import formatVND from '../utils/formatVND';
+import { toast } from '../utils/toast';
 
 const MAX_MSG_LENGTH = 500;
 const DEFAULT_SUGGESTIONS = [
@@ -9,6 +11,54 @@ const DEFAULT_SUGGESTIONS = [
   'Switch linear',
   'Tư vấn Custom',
 ];
+
+function ChatProductRecommendations({ message, addingMessage, onAdd, onOpenProduct }) {
+  const { products } = message;
+  const inStock = products.filter((product) => product.inStock);
+  const allAdded = inStock.every((product) => message.cartAddedIds?.includes(product.id));
+  let label = message.cartAddedIds?.length ? 'Thêm các món còn lại' : 'Thêm tất cả vào giỏ hàng';
+  if (allAdded) label = 'Đã thêm vào giỏ hàng';
+  if (message.cartNeedsReview) label = 'Kiểm tra giỏ hàng trước khi thêm lại';
+  if (addingMessage === message) label = 'Đang thêm vào giỏ…';
+
+  return (
+    <div className="km-chat-products">
+      {products.map((product) => (
+        <Link
+          key={product.id}
+          to={product.url || `/products/${product.id}`}
+          className="km-chat-product-card"
+          onClick={onOpenProduct}
+        >
+          <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-text)' }}>
+            {product.name}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+            <strong style={{ color: 'var(--color-primary)' }}>
+              {formatVND(product.price)}{product.quantity > 1 ? ` × ${product.quantity}` : ''}
+            </strong>
+            <span style={{ color: product.inStock ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              {product.inStock ? 'Còn hàng' : 'Hết hàng'}
+            </span>
+          </div>
+        </Link>
+      ))}
+      {inStock.length > 0 && (
+        <>
+          {inStock.length < products.length && <p className="km-field-hint">Chỉ thêm các món còn hàng.</p>}
+          <button
+            type="button"
+            className="km-btn km-btn-primary km-btn-full"
+            disabled={addingMessage !== null || allAdded || message.cartNeedsReview}
+            onClick={() => onAdd(message)}
+          >
+            {label}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 /**
  * Widget Chatbot tư vấn KeyMech (Figma frames 3:334 desktop & 3:492 mobile).
@@ -21,7 +71,11 @@ export function ChatWidget() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [rateLimited, setRateLimited] = useState('');
+  const [addingMessage, setAddingMessage] = useState(null);
+  const addingToCart = useRef(false);
   const loadedHistory = useRef(false);
+  const chatBodyRef = useRef(null);
+  const lastMessageRef = useRef(null);
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -40,10 +94,14 @@ export function ChatWidget() {
   }, [open]);
 
   useEffect(() => {
-    if (open) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!open) return;
+    const lastMessage = lastMessageRef.current;
+    if (!sending && lastMessage && lastMessage.offsetHeight > (chatBodyRef.current?.clientHeight ?? 0)) {
+      lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
     }
-  }, [messages, open]);
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, open, sending]);
 
   const sendText = async (rawText) => {
     const text = rawText.trim();
@@ -83,6 +141,48 @@ export function ChatWidget() {
     }
   };
 
+  const addRecommendationsToCart = async (message) => {
+    if (addingToCart.current || message.cartNeedsReview) return;
+    const addedIds = new Set(message.cartAddedIds);
+    const pending = message.products.filter((product) => product.inStock && !addedIds.has(product.id));
+    if (pending.length === 0) return;
+
+    addingToCart.current = true;
+    setAddingMessage(message);
+    const errors = [];
+    let needsReview = false;
+
+    try {
+      for (const product of pending) {
+        try {
+          await cartApi.addItem({ productId: product.id, quantity: product.quantity ?? 1 });
+          addedIds.add(product.id);
+        } catch (err) {
+          const status = err?.response?.status;
+          if (!status || status >= 500) {
+            needsReview = true;
+            break;
+          }
+          errors.push(`${product.name}: ${err.response.data?.message || 'Không thể thêm vào giỏ hàng'}`);
+          if (status === 401 || status === 403) break;
+        }
+      }
+
+      const addedCount = addedIds.size - (message.cartAddedIds?.length ?? 0);
+      if (addedCount > 0 || needsReview) window.dispatchEvent(new CustomEvent('keymech:cart-updated'));
+      if (addedCount > 0) toast.success(`Đã thêm ${addedCount} sản phẩm vào giỏ hàng`);
+      if (needsReview) toast.error('Chưa xác nhận được kết quả. Vui lòng kiểm tra giỏ hàng trước khi thêm lại.');
+      if (errors.length > 0) toast.error(errors.join(' • '));
+
+      setMessages((previous) => previous.map((item) => item === message
+        ? { ...item, cartAddedIds: [...addedIds], cartNeedsReview: needsReview }
+        : item));
+    } finally {
+      addingToCart.current = false;
+      setAddingMessage(null);
+    }
+  };
+
   return (
     <>
       {!open && (
@@ -119,7 +219,7 @@ export function ChatWidget() {
             Hệ thống có thể ghi nhận sản phẩm bạn xem trong phiên để gợi ý phù hợp hơn. Giá và tồn kho luôn lấy trực tiếp từ cửa hàng.
           </div>
 
-          <div className="km-chat-body">
+          <div className="km-chat-body" ref={chatBodyRef}>
             {messages.length === 0 && (
               <div className="km-chat-bubble km-chat-bubble--bot">
                 Chào bạn! Bạn đang tìm bàn phím layout nào, loại switch hay tầm giá bao nhiêu?
@@ -127,7 +227,11 @@ export function ChatWidget() {
             )}
 
             {messages.map((m, idx) => (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div
+                key={idx}
+                ref={idx === messages.length - 1 ? lastMessageRef : undefined}
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+              >
                 <div
                   className={`km-chat-bubble ${
                     m.role === 'user' ? 'km-chat-bubble--user' : 'km-chat-bubble--bot'
@@ -136,27 +240,13 @@ export function ChatWidget() {
                   {m.content}
                 </div>
 
-                {m.products && m.products.length > 0 && (
-                  <div className="km-chat-products">
-                    {m.products.map((p) => (
-                      <Link
-                        key={p.id}
-                        to={p.url || `/products/${p.id}`}
-                        className="km-chat-product-card"
-                        onClick={() => setOpen(false)}
-                      >
-                        <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-text)' }}>
-                          {p.name}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                          <strong style={{ color: 'var(--color-primary)' }}>{formatVND(p.price)}</strong>
-                          <span style={{ color: p.inStock ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {p.inStock ? 'Còn hàng' : 'Hết hàng'}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+                {m.products?.length > 0 && (
+                  <ChatProductRecommendations
+                    message={m}
+                    addingMessage={addingMessage}
+                    onAdd={addRecommendationsToCart}
+                    onOpenProduct={() => setOpen(false)}
+                  />
                 )}
               </div>
             ))}

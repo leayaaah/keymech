@@ -35,18 +35,12 @@ spring:
       genai:
         api-key: ${GEMINI_API_KEY:}
         chat:
-          model: gemini-3.5-flash-lite
+          model: ${GEMINI_CHAT_MODEL:gemini-3.5-flash-lite}
           temperature: 0.2
         embedding:
-          api-key: ${GEMINI_API_KEY:}
           text:
             model: gemini-embedding-001
             dimensions: 768
-    vectorstore:
-      mariadb:
-        initialize-schema: false
-        distance-type: COSINE
-        dimensions: 768
 
 server:
   port: 8080
@@ -61,8 +55,7 @@ app:
   cors-origin: ${APP_CORS_ORIGIN:http://localhost:5173}
   upload-dir: ${APP_UPLOAD_DIR:./uploads}
   chatbot:
-    mode: ${APP_CHATBOT_MODE:rule}   # ai | rule; giai đoạn A chỉ có rule
-    personalization: true
+    mode: ${APP_CHATBOT_MODE:rule}   # ai | rule
     timeout-seconds: 8
     rate-limit-per-minute: 10
     rate-limit-per-hour-global: 200

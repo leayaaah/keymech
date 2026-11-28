@@ -47,6 +47,26 @@ function readSpecRows(specs) {
   return [['specs', 'Thông số khác', specs]];
 }
 
+async function loadRelatedProducts(product) {
+  const { id, layout, switchType } = product;
+  if (!layout && !switchType) return [];
+
+  const firstPage = await productApi.list({ page: 0, ...(layout && { layout }) });
+  const candidates = (firstPage.content ?? []).filter((item) => item.id !== id);
+  const sameSwitch = (item) => Boolean(switchType) && item.switchType === switchType;
+  const similar = candidates.filter(sameSwitch);
+  if (layout) {
+    return [...similar, ...candidates.filter((item) => !sameSwitch(item))].slice(0, 4);
+  }
+
+  // Hai trang 12 sản phẩm tương ứng với 24 ứng viên trước khi cố định kích thước trang.
+  if (similar.length < 4 && firstPage.totalPages > 1) {
+    const secondPage = await productApi.list({ page: 1 }).catch(() => null);
+    similar.push(...(secondPage?.content ?? []).filter((item) => item.id !== id && sameSwitch(item)));
+  }
+  return similar.slice(0, 4);
+}
+
 /**
  * Trang chi tiết sản phẩm (Figma frames 3:154 & 3:382).
  * - Sản phẩm bị ẩn / không tồn tại (404) → hiển thị trang 404.
@@ -80,18 +100,9 @@ export function ProductDetailPage() {
         setQuantity(1);
 
         setRelated([]);
-        const filters = data.layout ? { layout: data.layout } : {};
-        productApi.list({ page: 0, size: data.layout ? 5 : 24, ...filters })
-          .then((res) => {
-            if (ignore) return;
-            const items = (res?.content ?? []).filter((item) => item.id !== data.id);
-            const similar = data.switchType
-              ? items.filter((item) => item.switchType === data.switchType)
-              : [];
-            const recommendations = data.layout
-              ? [...similar, ...items.filter((item) => !similar.includes(item))]
-              : similar;
-            setRelated(recommendations.slice(0, 4));
+        loadRelatedProducts(data)
+          .then((recommendations) => {
+            if (!ignore) setRelated(recommendations);
           })
           .catch(() => {
             if (!ignore) setRelated([]);

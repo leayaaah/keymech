@@ -24,8 +24,10 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -65,6 +67,45 @@ class PostUiApiIntegrationTests {
                 mvc.perform(get(paths[path]).with(actors[actor])).andExpect(status().is(expected[actor][path]));
             }
         }
+    }
+
+    @Test
+    @DisplayName("TC-SPA-01: mở trực tiếp các trang giao diện và giữ quyền API")
+    void opensFrontendRoutesWithoutExposingProtectedApis() throws Exception {
+        for (String path : new String[]{"/login", "/products/23", "/customer/orders/1/success",
+                "/staff", "/staff/products/1/edit", "/admin/categories"}) {
+            mvc.perform(get(path)).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+        }
+        mvc.perform(get("/api/staff/products")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/admin/categories").with(staff)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("TC-STOCK-01: lưu thông tin sản phẩm giữ tồn kho đã cập nhật")
+    void editingProductPreservesStockUpdatedSeparately() throws Exception {
+        var category = mvc.perform(post("/api/admin/categories").with(admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"name":"Danh mục thử tồn kho","slug":"stock-test"}
+                    """))
+            .andExpect(status().isCreated()).andReturn();
+        Number categoryId = JsonPath.read(category.getResponse().getContentAsString(), "$.id");
+        var product = mvc.perform(multipart(HttpMethod.POST, "/api/staff/products").with(staff)
+                .param("name", "Sản phẩm thử tồn kho").param("categoryId", categoryId.toString())
+                .param("price", "1200000").param("stockQuantity", "5"))
+            .andExpect(status().isCreated()).andReturn();
+        Number productId = JsonPath.read(product.getResponse().getContentAsString(), "$.id");
+        String path = "/api/staff/products/" + productId;
+
+        mvc.perform(patch(path + "/stock").with(customer).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"stockQuantity\":4}")).andExpect(status().isForbidden());
+        mvc.perform(patch(path + "/stock").with(staff).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"stockQuantity\":4}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.stockQuantity").value(4));
+        mvc.perform(multipart(HttpMethod.PUT, path).with(staff)
+                .param("name", "Đổi tên sản phẩm").param("categoryId", categoryId.toString())
+                .param("price", "1300000").param("stockQuantity", "5"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.stockQuantity").value(4));
     }
 
     @Test

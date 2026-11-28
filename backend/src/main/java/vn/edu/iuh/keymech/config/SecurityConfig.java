@@ -78,7 +78,9 @@ public class SecurityConfig {
             .requestMatchers("/api/cart/**").access(cartAccess)
             .requestMatchers("/api/auth/**", "/api/products/**", "/api/categories/**",
                              "/api/chat/**", "/uploads/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/", "/index.html", "/assets/**").permitAll()
+            // React áp dụng ProtectedRoute sau khi tải HTML. Quyền API được kiểm tra ở trên.
+            .requestMatchers(HttpMethod.GET, WebConfig.SPA_ROUTES).permitAll()
+            .requestMatchers(HttpMethod.GET, "/", "/index.html", "/assets/**", "/favicon.svg", "/icons.svg").permitAll()
             .anyRequest().denyAll())
           .exceptionHandling(e -> e
             .authenticationEntryPoint((req, res, ex) ->

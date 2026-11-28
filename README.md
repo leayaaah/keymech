@@ -4,42 +4,71 @@
 
 - JDK 21+
 - Docker & Docker Compose
-- Maven (trên PATH) — repo **không** có Maven wrapper (`./mvnw`)
+- Maven trên PATH
+- Node.js 22.12+ nếu chạy Vite riêng
 
-## Khởi chạy (dev)
+## Cấu hình môi trường
 
-```bash
-# 1. Khởi động MariaDB + MailHog
+Từ thư mục gốc, sao chép `.env.example` thành `.env` và điền thông tin kết nối. Compose và backend dùng cùng tài khoản và mật khẩu. Chạy lệnh sau để khởi động MariaDB và MailHog.
+
+```shell
 docker compose up -d
-
-# 2. Tạo file .env từ mẫu và điền giá trị thật (DB_URL, ...), hoặc set env riêng
-cp .env.example .env
-
-# 3. Chạy backend
-cd backend
-mvn spring-boot:run
 ```
 
-Frontend dev (React + Vite) ở port 5173, proxy `/api` và `/uploads` về backend:
+Nạp biến từ `.env` vào terminal sẽ chạy Maven và Java. Nếu chạy backend từ một thư mục khác, đặt `APP_UPLOAD_DIR` thành đường dẫn tuyệt đối đến thư mục lưu ảnh.
 
 ```bash
-cd frontend
-npm ci
-npm run dev
+# Bash hoặc Git Bash, từ thư mục gốc
+set -a
+. ./.env
+set +a
 ```
 
-## Đóng gói JAR (có sẵn frontend bên trong)
-
-```bash
-cd backend
-mvn clean package
-# JAR: target/keymech-0.0.1-SNAPSHOT.jar — chứa cả index.html và assets frontend
-java -jar target/keymech-0.0.1-SNAPSHOT.jar
+```powershell
+# PowerShell, từ thư mục gốc
+Get-Content -LiteralPath .env | ForEach-Object {
+    if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
+        [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+    }
+}
 ```
 
-> Bước `package` tự chạy `npm ci` + `npm run build` (qua `frontend-maven-plugin`, tự tải Node + npm)
-> rồi copy `frontend/dist/` vào `static/` trong JAR. Máy sạch chỉ cần JDK + Maven + Internet
-> để tải Node/npm lần đầu.
+## Khởi chạy khi phát triển
+
+Backend dùng cổng 8080.
+
+```shell
+mvn -f backend/pom.xml spring-boot:run
+```
+
+Mở terminal khác, vào `frontend/` rồi chạy `npm ci` và `npm run dev`. Trên PowerShell có thể dùng `npm.cmd`. Vite ở cổng 5173 và chuyển tiếp `/api` cùng `/uploads` về backend.
+
+## Đóng gói và chạy JAR
+
+Chạy hai lệnh sau từ thư mục gốc trong terminal đã nạp biến môi trường. MariaDB phải sẵn sàng để Maven chạy các test tích hợp.
+
+```shell
+mvn -f backend/pom.xml clean package
+java -jar backend/target/keymech-0.0.1-SNAPSHOT.jar
+```
+
+Maven tự tải Node và npm, chạy `npm ci`, `npm run build` và đóng gói frontend vào JAR. Lần build đầu cần Internet để tải phụ thuộc. Sau khi khởi động, mở `http://localhost:8080`.
+
+## Điều chỉnh tồn kho
+
+Staff và Admin đặt số lượng qua `PATCH /api/staff/products/{id}/stock` với JSON dạng `{"stockQuantity": 5}`. API `PUT /api/staff/products/{id}` dùng để lưu thông tin sản phẩm và giữ nguyên tồn kho hiện tại.
+
+## Chatbot G-04
+
+- Demo dùng `APP_CHATBOT_MODE=rule` mặc định. Để bật RAG, đặt `APP_CHATBOT_MODE=ai` và `GEMINI_API_KEY` trong môi trường của backend, rồi khởi động lại. Có thể đặt `GEMINI_CHAT_MODEL` theo quyền của khóa Gemini. RAG dùng MariaDB 11.8 và bảng `vector_store` trong `database/01-schema.sql`.
+- Chỉ mục được khởi tạo bất đồng bộ khi backend sẵn sàng nếu chưa có tài liệu kiến thức. Các thao tác tạo, sửa, ẩn và hiện sản phẩm cập nhật chỉ mục sau khi giao dịch lưu sản phẩm thành công. Chatbot dùng câu trả lời `rule` khi RAG thiếu ngữ cảnh, gặp lỗi hoặc hết 8 giây.
+- `POST /api/admin/chatbot/reindex` dựng lại chỉ mục sản phẩm công khai và tài liệu kiến thức sau khi nhập dữ liệu bằng SQL, đổi model embedding hoặc cập nhật danh mục trong chế độ `rule`. Gửi cookie phiên Admin, không cần body. Phản hồi `200` có dạng `{"indexedDocuments":35}`. Guest nhận `401`, Customer và Staff nhận `403`. Nếu có lượt cập nhật đang chạy, endpoint trả `409 CHATBOT_INDEX_BUSY`. Khi AI tắt, thiếu khóa hoặc không dựng được chỉ mục, endpoint trả `503` với `CHATBOT_AI_DISABLED` hoặc `CHATBOT_INDEX_FAILED`.
+- Gemini nhận từ vựng tư vấn đã lọc cùng dữ liệu danh mục công khai. Lịch sử trò chuyện vẫn lưu trong phiên và không được gửi tới Gemini. Cá nhân hóa chưa thuộc nhánh này.
+- FAQ về mạch hàn, hot-swap, chân switch và keycap trả lời trực tiếp ở cả hai chế độ. Nếu chỉ mục AI đã tồn tại, Admin có thể gọi reindex để đưa bản cập nhật tài liệu linh kiện vào RAG.
+- Tư vấn cấu hình Custom lấy linh kiện đang hiển thị và còn hàng từ danh mục. Khi biết số phím và số switch mỗi gói, chatbot tính số gói cần mua. Giá tạm tính chỉ gồm các sản phẩm được gợi ý.
+- Nút “Thêm tất cả vào giỏ hàng” thêm các món còn hàng theo `products[].quantity` trong kết quả chat. Nếu một món bị từ chối vì tồn kho thay đổi, có thể thử lại các món chưa thêm.
+- Để chạy `ChatbotRagIntegrationTests`, đặt `RAG_TEST_DB_URL`, `RAG_TEST_DB_USERNAME` và `RAG_TEST_DB_PASSWORD` trỏ tới MariaDB thử nghiệm riêng đã nạp `01-schema.sql`. Test ghi sản phẩm và dựng lại `vector_store` bằng Gemini giả lập trên máy.
+- Chạy `postman collection run docs/chatbot.postman_collection.json` từ thư mục gốc để kiểm tra lời chào và quyền Guest trên backend đang chạy ở cổng 8080.
 
 ## Cấu trúc
 
@@ -49,7 +78,7 @@ keymech/
 ├── frontend/     React + Vite
 ├── database/     SQL schema & seed data
 ├── uploads/      Ảnh sản phẩm
-├── docs/         Tài liệu, hợp đồng API
+├── docs/         Tài liệu, hợp đồng API và Postman
 └── docker-compose.yml
 ```
 

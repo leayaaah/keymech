@@ -122,7 +122,7 @@ class DashboardServiceTest {
     }
 
     private Order createOrder(User user, BigDecimal total, OrderStatus status, PaymentStatus payment) {
-        String suffix = UUID.randomUUID().toString();
+        String suffix = UUID.randomUUID().toString().substring(0, 16);
         Order order = new Order();
         order.setOrderCode("DASH-" + suffix);
         order.setUser(user);
@@ -137,7 +137,7 @@ class DashboardServiceTest {
     }
 
     private CustomRequest createCustomRequest(User user, CustomStatus status) {
-        String suffix = UUID.randomUUID().toString();
+        String suffix = UUID.randomUUID().toString().substring(0, 16);
         CustomRequest request = new CustomRequest();
         request.setRequestCode("DASH-CR-" + suffix);
         request.setUser(user);
