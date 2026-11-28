@@ -47,7 +47,8 @@ public class AiChatbotService implements ChatbotService {
         "https?://|/products/|₫|\\b(?:con hang|het hang|ton kho|khuyen mai|giam gia|vnd)\\b"
             + "|\\b\\d{1,3}(?:[.,]\\d{3})+\\b|\\d[\\d.,]*\\s*(?:d|dong|trieu|tr|nghin|k)\\b");
     private static final Set<String> KEYBOARD_WORDS = words("""
-        phim keyboard switch linear tactile clicky hot swap keycap oem pbt abs profile ansi iso stem
+        phim keyboard switch linear tactile clicky red brown blue black yellow silver
+        hot swap keycap oem pbt abs profile ansi iso stem
         layout fullsize tkl 100% 75% 65% 60% 40% custom kit barebone plate pcb stabilizer
         gaming game led rgb wireless bluetooth usb silent solder lube puller
         """);
@@ -109,8 +110,12 @@ public class AiChatbotService implements ChatbotService {
             if (response != null) return response;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.debug("Chatbot dùng câu trả lời rule vì lượt tư vấn AI bị ngắt");
         } catch (ExecutionException e) {
-            log.debug("Chatbot dùng câu trả lời rule ({})", e.getCause().getClass().getSimpleName());
+            // Thông báo gốc từ nhà cung cấp có thể chứa dữ liệu hoặc thông tin xác thực của yêu cầu.
+            Throwable cause = e.getCause();
+            log.debug("Chatbot dùng câu trả lời rule vì truy xuất hoặc sinh câu trả lời AI thất bại ({})",
+                cause == null ? e.getClass().getSimpleName() : cause.getClass().getSimpleName());
         } catch (RejectedExecutionException | TimeoutException e) {
             log.debug("Chatbot dùng câu trả lời rule ({})", e.getClass().getSimpleName());
         } finally {
@@ -126,37 +131,64 @@ public class AiChatbotService implements ChatbotService {
         String genericQuery = catalogQuery(question, Set.of());
         String query = catalogQuery(question, catalogTerms(catalog));
         String category = RuleBasedChatbotService.catalogCategory(question);
-        if (query.isBlank()) return category == null ? rule.clarify() : null;
+        if (query.isBlank()) {
+            log.debug("Chatbot không dùng AI vì không còn từ khóa sau khi lọc");
+            return category == null ? rule.clarify() : null;
+        }
 
         boolean explanation = RuleBasedChatbotService.isExplanation(question);
+        boolean requiresProducts = !explanation && (layout != null || budget != null || "switch".equals(category));
         var ids = explanation ? List.<Long>of() : searchProducts(query, layout, budget, category, catalog);
-        if (!explanation && ids.isEmpty() && (layout != null || budget != null)) return null;
-        if (genericQuery.isBlank()) return catalogResult(ids, layout, budget, category);
+        if (requiresProducts && ids.isEmpty()) {
+            log.debug("Chatbot dùng câu trả lời rule vì tìm kiếm vector không có sản phẩm theo điều kiện đã chọn");
+            return null;
+        }
+        if (genericQuery.isBlank()) {
+            log.debug("Chatbot không gọi model vì không có từ khóa tư vấn chung");
+            return catalogResult(ids, layout, budget, category);
+        }
 
         var filters = new FilterExpressionBuilder();
         var knowledge = store.similaritySearch(SearchRequest.builder().query(genericQuery).topK(3)
             .similarityThreshold(KNOWLEDGE_SIMILARITY)
             .filterExpression(filters.eq("type", "KNOWLEDGE").build()).build());
-        if (knowledge.isEmpty()) return catalogResult(ids, layout, budget, category);
+        if (knowledge.isEmpty()) {
+            log.debug("Chatbot không gọi model vì không tìm được tài liệu kiến thức phù hợp");
+            return catalogResult(ids, layout, budget, category);
+        }
         String reference = knowledge.stream().map(Document::getText).collect(Collectors.joining("\n\n"));
         ChatAnswer answer = chat.prompt().system(systemPrompt).user("""
             Từ khóa tư vấn: %s
             Kiến thức tham khảo:
             %s
             """.formatted(genericQuery, reference)).call().entity(ChatAnswer.class);
-        if (answer == null || answer.answer() == null || answer.answer().isBlank()
-                || PRODUCT_CLAIM.matcher(RuleBasedChatbotService.normalize(answer.answer())).find()
-                || mentionsProduct(answer.answer(), catalog)) {
+        if (answer == null || answer.answer() == null || answer.answer().isBlank()) {
+            log.debug("Chatbot bỏ câu trả lời AI vì nội dung rỗng");
+            return catalogResult(ids, layout, budget, category);
+        }
+        if (PRODUCT_CLAIM.matcher(RuleBasedChatbotService.normalize(answer.answer())).find()) {
+            log.debug("Chatbot bỏ câu trả lời AI vì có giá, tình trạng hàng hoặc đường dẫn");
+            return catalogResult(ids, layout, budget, category);
+        }
+        if (mentionsProduct(answer.answer(), catalog)) {
+            log.debug("Chatbot bỏ câu trả lời AI vì nhắc tên hoặc mã sản phẩm cụ thể");
             return catalogResult(ids, layout, budget, category);
         }
         var cards = eligibleProducts(ids, layout, budget, category);
-        if (!explanation && cards.isEmpty() && (layout != null || budget != null)) return null;
+        if (requiresProducts && cards.isEmpty()) {
+            log.debug("Chatbot dùng câu trả lời rule vì không còn sản phẩm sau khi kiểm tra lại trong CSDL");
+            return null;
+        }
         return new ChatResponse(answer.answer(), cards, List.of(), "ai");
     }
 
     private ChatResponse catalogResult(List<Long> ids, String layout, BigDecimal budget, String category) {
         var cards = eligibleProducts(ids, layout, budget, category);
-        return cards.isEmpty() ? null : rule.catalogResults(cards);
+        if (cards.isEmpty()) {
+            log.debug("Chatbot chuyển sang rule.reply vì không có thẻ sản phẩm hợp lệ từ tìm kiếm vector");
+            return null;
+        }
+        return rule.catalogResults(cards);
     }
 
     private List<Long> searchProducts(String query, String layout, BigDecimal budget,

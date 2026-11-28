@@ -67,6 +67,10 @@ class RuleBasedChatbotServiceTest {
         "Mach han co thay switch duoc khong?, tháo mối hàn cũ",
         "Hot-swap là gì?, socket",
         "Switch 3/5 chân khác nhau thế nào?, hai lỗ tương ứng",
+        "Red switch khác blue switch chỗ nào, Blue thường là clicky",
+        "Red switch khác Blue switch?, Red thường là linear",
+        "Linear với tactile khác nhau sao, Brown thường là tactile",
+        "So sánh switch Red và Blue, Red thường êm hơn Blue",
         "Keycap là gì?, stem",
         "Switch này lắp được vào bàn phím của mình không?, model và phiên bản bàn phím hoặc PCB",
         "Bộ keycap này có vừa layout 75% không?, kiểu stem của switch và bố trí phím thực tế",
@@ -82,6 +86,32 @@ class RuleBasedChatbotServiceTest {
         assertTrue(ruleResponse.products().isEmpty());
         assertEquals(ruleResponse, ai.reply(question));
         verifyNoInteractions(products, executor);
+    }
+
+    @Test
+    void reply_unrecognizedExplanation_asksForDetailsWithoutCatalogSearch() {
+        var response = chatbot.reply("Switch quang là gì?");
+
+        assertEquals("clarify", response.intent());
+        assertTrue(response.products().isEmpty());
+        verifyNoInteractions(products);
+    }
+
+    @Test
+    void reply_linearSwitchPurchase_returnsCatalogCards() {
+        Product product = new Product();
+        product.setId(6L);
+        product.setName("Switch Linear");
+        product.setSwitchType("Linear");
+        product.setPrice(BigDecimal.valueOf(120_000));
+        product.setStockQuantity(10);
+        when(products.recommend(eq(null), eq(null), eq("linear"), eq("switch"), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(product)));
+
+        var response = chatbot.reply("Switch linear");
+
+        assertEquals("recommend", response.intent());
+        assertEquals(List.of(6L), response.products().stream().map(ChatProductResponse::id).toList());
     }
 
     @Test
