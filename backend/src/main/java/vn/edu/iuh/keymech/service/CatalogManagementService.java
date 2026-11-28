@@ -14,6 +14,8 @@ import vn.edu.iuh.keymech.dto.CategoryResponse;
 import vn.edu.iuh.keymech.dto.PageResponse;
 import vn.edu.iuh.keymech.dto.product.StaffProductInput;
 import vn.edu.iuh.keymech.dto.product.StaffProductResponse;
+import vn.edu.iuh.keymech.dto.product.StockUpdateInput;
+import vn.edu.iuh.keymech.dto.product.UpdateProductInput;
 import vn.edu.iuh.keymech.event.ProductChangedEvent;
 import vn.edu.iuh.keymech.exception.BusinessException;
 import vn.edu.iuh.keymech.exception.ResourceNotFoundException;
@@ -65,9 +67,22 @@ public class CatalogManagementService {
     }
 
     @Transactional
-    public StaffProductResponse updateProduct(long id, StaffProductInput input) {
+    public StaffProductResponse updateProduct(long id, UpdateProductInput input) {
         Product product = lockProduct(id);
-        apply(product, input);
+        applyUpdate(product, input);
+        events.publishEvent(new ProductChangedEvent(this, id, "updated"));
+        return StaffProductResponse.from(product);
+    }
+
+    /**
+     * Điều chỉnh tồn kho — thao tác chủ đích, tách khỏi form sửa thông tin.
+     * Lệnh UPDATE riêng trên dòng product (mang lock) nên không ghi đè giá trị
+     * đã bị checkout trừ đi trong lúc form sửa đang mở.
+     */
+    @Transactional
+    public StaffProductResponse updateStock(long id, StockUpdateInput input) {
+        Product product = lockProduct(id);
+        product.setStockQuantity(input.stockQuantity());
         events.publishEvent(new ProductChangedEvent(this, id, "updated"));
         return StaffProductResponse.from(product);
     }
@@ -111,6 +126,7 @@ public class CatalogManagementService {
         return CategoryResponse.from(category);
     }
 
+    /** Tạo mới: set đầy đủ thông tin + tồn kho ban đầu. */
     private void apply(Product product, StaffProductInput input) {
         product.setCategory(requireActiveCategory(input.categoryId()));
         product.setName(input.name().strip());
@@ -119,6 +135,21 @@ public class CatalogManagementService {
         product.setSwitchType(input.switchType());
         product.setPrice(input.price());
         product.setStockQuantity(input.stockQuantity());
+        product.setDescription(input.description());
+        product.setSpecs(input.specs());
+        if (input.image() != null) {
+            product.setImageUrl(images.store(input.image(), product.getImageUrl()));
+        }
+    }
+
+    /** Sửa thông tin — không đụng tồn kho (xem UpdateProductInput). */
+    private void applyUpdate(Product product, UpdateProductInput input) {
+        product.setCategory(requireActiveCategory(input.categoryId()));
+        product.setName(input.name().strip());
+        product.setBrand(input.brand());
+        product.setLayout(input.layout());
+        product.setSwitchType(input.switchType());
+        product.setPrice(input.price());
         product.setDescription(input.description());
         product.setSpecs(input.specs());
         if (input.image() != null) {

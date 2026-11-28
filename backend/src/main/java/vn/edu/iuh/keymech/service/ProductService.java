@@ -34,15 +34,14 @@ public class ProductService {
 
     /**
      * G-01: Danh sách sản phẩm đang hiện, có lọc và phân trang.
-     * page = 0-based; size = số sản phẩm mỗi trang (12 ở frontend).
+     * page = 0-based; size cố định 12 sản phẩm mỗi trang (tiêu chí G-01).
      * Trang rỗng trả về content rỗng (không ném lỗi).
-     * page/size null → dùng 0 và 12 (frontend default).
+     * Khi không có page, dùng trang 0.
      */
     @Transactional(readOnly = true)
     public Page<ProductsResponse> list(ProductsFilterRequest f) {
         int page = f.page() != null ? Math.max(f.page(), 0) : 0;
-        int size = f.size() != null ? Math.max(f.size(), 12) : 12;
-        PageRequest pageRequest = PageRequest.of(page, size, sort(f.sort()));
+        PageRequest pageRequest = PageRequest.of(page, 12, sort(f.sort()));
 
         Specification<Product> spec = ProductRepository.withFilters(
                 f.categoryId(), f.brand(), f.layout(),

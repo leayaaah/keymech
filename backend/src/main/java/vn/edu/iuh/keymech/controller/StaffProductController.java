@@ -9,6 +9,8 @@ import vn.edu.iuh.keymech.dto.CategoryResponse;
 import vn.edu.iuh.keymech.dto.PageResponse;
 import vn.edu.iuh.keymech.dto.product.StaffProductInput;
 import vn.edu.iuh.keymech.dto.product.StaffProductResponse;
+import vn.edu.iuh.keymech.dto.product.StockUpdateInput;
+import vn.edu.iuh.keymech.dto.product.UpdateProductInput;
 import vn.edu.iuh.keymech.model.enums.VisibilityStatus;
 import vn.edu.iuh.keymech.service.CatalogManagementService;
 
@@ -36,8 +38,16 @@ public class StaffProductController {
     }
 
     @PutMapping(path = "/api/staff/products/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public StaffProductResponse update(@PathVariable long id, @Valid @ModelAttribute StaffProductInput input) {
+    public StaffProductResponse update(@PathVariable long id, @Valid @ModelAttribute UpdateProductInput input) {
         return catalog.updateProduct(id, input);
+    }
+
+    /**
+     * A-01: Điều chỉnh tồn kho — thao tác chủ đích, tách khỏi form sửa thông tin.
+     */
+    @PatchMapping("/api/staff/products/{id}/stock")
+    public StaffProductResponse stock(@PathVariable long id, @Valid @RequestBody StockUpdateInput input) {
+        return catalog.updateStock(id, input);
     }
 
     @PutMapping("/api/admin/products/{id}/visibility")

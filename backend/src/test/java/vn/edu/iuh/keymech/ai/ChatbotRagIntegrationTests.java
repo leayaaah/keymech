@@ -44,6 +44,7 @@ import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.JsonNode;
 import vn.edu.iuh.keymech.dto.product.StaffProductInput;
+import vn.edu.iuh.keymech.dto.product.UpdateProductInput;
 import vn.edu.iuh.keymech.model.enums.VisibilityStatus;
 import vn.edu.iuh.keymech.service.CatalogManagementService;
 
@@ -143,7 +144,9 @@ class ChatbotRagIntegrationTests {
         }
         assertThat(CHAT_BODY.get()).isNull();
 
-        catalog.updateProduct(id, product(categoryId, "RAG Keychron Updated", 2_500_000, 0));
+        catalog.updateProduct(id, new UpdateProductInput(
+            "RAG Keychron Updated", categoryId, "Keychron", "75%", "Linear",
+            BigDecimal.valueOf(2_500_000), "Bàn phím cơ phục vụ kiểm thử", "Kết nối USB", null));
         await(() -> count("SELECT COUNT(*) FROM vector_store WHERE JSON_VALUE(metadata, '$.productId') = ? "
             + "AND content LIKE '%Updated%'", id) == 1);
         mvc.perform(question).andExpect(status().isOk())

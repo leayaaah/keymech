@@ -4,22 +4,59 @@
 
 - JDK 21+
 - Docker & Docker Compose
-- Node.js 20+ (frontend, làm sau)
+- Maven trên PATH
+- Node.js 22.12+ nếu chạy Vite riêng
 
-## Khởi chạy
+## Cấu hình môi trường
+
+Từ thư mục gốc, sao chép `.env.example` thành `.env` và điền thông tin kết nối. Compose và backend dùng cùng tài khoản và mật khẩu. Chạy lệnh sau để khởi động MariaDB và MailHog.
+
+```shell
+docker compose up -d
+```
+
+Nạp biến từ `.env` vào terminal sẽ chạy Maven và Java. Nếu chạy backend từ một thư mục khác, đặt `APP_UPLOAD_DIR` thành đường dẫn tuyệt đối đến thư mục lưu ảnh.
 
 ```bash
-# 1. Khởi động MariaDB + MailHog
-docker compose up -d
-
-# 2. Tạo file .env từ mẫu và điền giá trị thật
-cp .env.example .env
-
-# 3. Chạy backend
-cd backend
-export $(grep -v '^#' ../.env | xargs)    # Git Bash / WSL
-mvn spring-boot:run
+# Bash hoặc Git Bash, từ thư mục gốc
+set -a
+. ./.env
+set +a
 ```
+
+```powershell
+# PowerShell, từ thư mục gốc
+Get-Content -LiteralPath .env | ForEach-Object {
+    if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') {
+        [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+    }
+}
+```
+
+## Khởi chạy khi phát triển
+
+Backend dùng cổng 8080.
+
+```shell
+mvn -f backend/pom.xml spring-boot:run
+```
+
+Mở terminal khác, vào `frontend/` rồi chạy `npm ci` và `npm run dev`. Trên PowerShell có thể dùng `npm.cmd`. Vite ở cổng 5173 và chuyển tiếp `/api` cùng `/uploads` về backend.
+
+## Đóng gói và chạy JAR
+
+Chạy hai lệnh sau từ thư mục gốc trong terminal đã nạp biến môi trường. MariaDB phải sẵn sàng để Maven chạy các test tích hợp.
+
+```shell
+mvn -f backend/pom.xml clean package
+java -jar backend/target/keymech-0.0.1-SNAPSHOT.jar
+```
+
+Maven tự tải Node và npm, chạy `npm ci`, `npm run build` và đóng gói frontend vào JAR. Lần build đầu cần Internet để tải phụ thuộc. Sau khi khởi động, mở `http://localhost:8080`.
+
+## Điều chỉnh tồn kho
+
+Staff và Admin đặt số lượng qua `PATCH /api/staff/products/{id}/stock` với JSON dạng `{"stockQuantity": 5}`. API `PUT /api/staff/products/{id}` dùng để lưu thông tin sản phẩm và giữ nguyên tồn kho hiện tại.
 
 ## Chatbot G-04
 
@@ -39,10 +76,10 @@ mvn spring-boot:run
 ```
 keymech/
 ├── backend/      Spring Boot (Maven)
-├── frontend/     React + Vite (làm sau)
+├── frontend/     React + Vite
 ├── database/     SQL schema & seed data
 ├── uploads/      Ảnh sản phẩm
-├── docs/         Tài liệu, Postman
+├── docs/         Tài liệu, hợp đồng API và Postman
 └── docker-compose.yml
 ```
 

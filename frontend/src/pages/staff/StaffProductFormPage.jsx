@@ -50,6 +50,10 @@ export function StaffProductFormPage() {
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  // A-01: panel chỉnh tồn kho riêng (chỉ khi sửa) — không nằm trong form thông tin
+  // để tránh ghi đè tồn kho do khách checkout trong lúc form mở.
+  const [stockValue, setStockValue] = useState('');
+  const [savingStock, setSavingStock] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -72,6 +76,7 @@ export function StaffProductFormPage() {
           description: data?.description || '',
           specs: data?.specs || '',
         });
+        setStockValue(data?.stockQuantity != null ? String(data.stockQuantity) : '0');
       })
       .catch((err) => {
         if (active) setLoadError(getFeatureErrorMessage(err, 'Không thể tải thông tin sản phẩm.'));
@@ -94,7 +99,7 @@ export function StaffProductFormPage() {
       next.price = 'Giá bán phải lớn hơn 0.';
     }
     const stockNum = Number(form.stockQuantity);
-    if (form.stockQuantity === '' || !Number.isInteger(stockNum) || stockNum < 0) {
+    if (!isEdit && (form.stockQuantity === '' || !Number.isInteger(stockNum) || stockNum < 0)) {
       next.stockQuantity = 'Tồn kho phải là số nguyên ≥ 0.';
     }
     const imageError = validateImageFile(imageFile);
@@ -236,6 +241,7 @@ export function StaffProductFormPage() {
           <div className="km-field">
             <label htmlFor="prod-stock" className="km-label">
               Tồn kho <span className="km-required">*</span>
+              {isEdit && <span className="km-field-hint"> — chỉ khi tạo mới</span>}
             </label>
             <input
               id="prod-stock"
@@ -245,6 +251,8 @@ export function StaffProductFormPage() {
               className={`km-input ${errors.stockQuantity ? 'km-input--error' : ''}`}
               value={form.stockQuantity}
               onChange={(e) => setForm((p) => ({ ...p, stockQuantity: e.target.value }))}
+              disabled={isEdit}
+              title={isEdit ? 'Tồn kho được chỉnh riêng bằng bảng bên dưới, không gửi cùng form sửa thông tin.' : ''}
             />
             {errors.stockQuantity && <p className="km-field-error">{errors.stockQuantity}</p>}
           </div>
@@ -313,6 +321,54 @@ export function StaffProductFormPage() {
             onChange={(e) => setForm((p) => ({ ...p, specs: e.target.value }))}
           />
         </div>
+
+        {isEdit && (
+          <div className="km-field" style={{ marginTop: '8px' }}>
+            <label htmlFor="prod-stock-adj" className="km-label">
+              Điều chỉnh tồn kho (thao tác riêng, không phụ thuộc form trên)
+            </label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                id="prod-stock-adj"
+                type="number"
+                min={0}
+                step={1}
+                className="km-input"
+                style={{ maxWidth: '140px' }}
+                value={stockValue}
+                onChange={(e) => setStockValue(e.target.value)}
+              />
+              <button
+                type="button"
+                className="km-btn km-btn-soft"
+                disabled={savingStock}
+                onClick={async () => {
+                  const value = Number(stockValue);
+                  if (stockValue === '' || !Number.isInteger(value) || value < 0) {
+                    toast.error('Tồn kho phải là số nguyên ≥ 0.');
+                    return;
+                  }
+                  setSavingStock(true);
+                  try {
+                    const updated = await staffProductApi.updateStock(id, value);
+                    setStockValue(String(updated.stockQuantity));
+                    setForm((p) => ({ ...p, stockQuantity: String(updated.stockQuantity) }));
+                    toast.success('Đã điều chỉnh tồn kho.');
+                  } catch (err) {
+                    toast.error(getFeatureErrorMessage(err, 'Không thể điều chỉnh tồn kho.'));
+                  } finally {
+                    setSavingStock(false);
+                  }
+                }}
+              >
+                {savingStock ? 'Đang lưu...' : 'Lưu tồn kho'}
+              </button>
+            </div>
+            <p className="km-field-hint">
+              Chỉnh tồn kho riêng để không ghi đè giá trị khách đã checkout trong lúc form sửa đang mở.
+            </p>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '12px' }}>
           <button type="submit" className="km-btn km-btn-primary" disabled={submitting}>
