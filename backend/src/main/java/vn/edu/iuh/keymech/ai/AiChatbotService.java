@@ -4,10 +4,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,9 +15,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
@@ -27,6 +25,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.io.ClassPathResource;
+import vn.edu.iuh.keymech.dto.ChatContext;
 import vn.edu.iuh.keymech.dto.ChatProductResponse;
 import vn.edu.iuh.keymech.dto.ChatResponse;
 import vn.edu.iuh.keymech.model.Product;
@@ -47,15 +46,25 @@ public class AiChatbotService implements ChatbotService {
     private static final Pattern PRODUCT_CLAIM = Pattern.compile(
         "https?://|/products/|₫|\\b(?:con hang|het hang|ton kho|khuyen mai|giam gia|vnd)\\b"
             + "|\\b\\d{1,3}(?:[.,]\\d{3})+\\b|\\d[\\d.,]*\\s*(?:d|dong|trieu|tr|nghin|k)\\b");
-    private static final Set<String> KEYBOARD_WORDS = Set.copyOf(Arrays.asList(("""
-        ban phim co keyboard switch nut cong tac linear tactile clicky hot swap thay keycap cherry oem pbt abs profile
-        layout kich thuoc gon nho fullsize full size tkl 100% 75% 65% 60% 40% custom tuy chinh lap rap kit plate pcb
-        gaming choi game van phong hoc tap lam viec go em im on tieng am thanh nhe nang luc nhan bam nhanh
-        led rgb den mau sac dep day khong wireless bluetooth usb ket noi pin sac mac windows
-        co san hang het tim mua gia re dat cu the ngan sach duoi tren tam khoang toi da trieu tr nghin k dong vnd
-        tu van nen chon goi y phu hop dung cho can thich loai nao gi the nao khac nhau so sanh voi va hoac
-        giao van chuyen doi tra bao hanh chinh sach quy trinh yeu cau bao gia san pham phu kien chat lieu
-        """).strip().split("\\s+")));
+    private static final Set<String> KEYBOARD_WORDS = words("""
+        phim keyboard switch linear tactile clicky hot swap keycap oem pbt abs profile ansi iso stem
+        layout fullsize tkl 100% 75% 65% 60% 40% custom kit barebone plate pcb stabilizer
+        gaming game led rgb wireless bluetooth usb silent solder lube puller
+        """);
+    private static final Set<String> STOP_WORDS = words("""
+        a ban co khong nao gi the duoi tren toi tam khoang trieu tr nghin k dong vnd
+        tu van nen chon goi y phu hop dung cho can thich loai khac nhau so sanh voi va hoac
+        con hang het tim mua gia re dat cu ngan sach san pham cai gom mot bo mau day cap
+        duoc roi nua minh nay do ay la may du se sao
+        """);
+    private static final Pattern CATALOG_PHRASE = Pattern.compile(
+        "\\b(?:ban phim|phu kien|ke tay|cap usb(?:[ -]c)?|cap sac|dung cu|go em|it on|am thanh|van phong|hoc tap|khong day|mach han)\\b");
+    private static final Pattern MODEL_SUFFIX = Pattern.compile(
+        "(?:\\s*\\((?:goi|pack)\\s+\\d+\\)|\\s+(?:\\d{2,3}%|tkl|fullsize))$");
+    private static final Pattern MODEL_CODE = Pattern.compile("\\b[a-z]+\\d+[a-z0-9]*\\b");
+    // Điểm similarity của MariaDB Vector Store là 1 - cosine distance.
+    private static final double PRODUCT_SIMILARITY = 0.65;
+    private static final double KNOWLEDGE_SIMILARITY = 0.60;
 
     private final RuleBasedChatbotService rule;
     private final ChatProductRepository products;
@@ -82,15 +91,15 @@ public class AiChatbotService implements ChatbotService {
     }
 
     @Override
-    public ChatResponse reply(String question) {
+    public ChatResponse reply(String question, ChatContext context) {
         String normalized = RuleBasedChatbotService.normalize(question).strip();
         if (INTERNAL_INSTRUCTIONS.matcher(normalized).find() || OUTSIDE_CATALOG.matcher(normalized).find()) {
             return rule.outOfScope();
         }
         if (GREETING.matcher(normalized).matches() || PRIVATE_INPUT.matcher(normalized).find()) {
-            return rule.reply(question);
+            return rule.reply(question, context);
         }
-        ChatResponse advice = rule.componentAdvice(normalized);
+        ChatResponse advice = rule.componentAdvice(normalized, context);
         if (advice != null) return advice;
 
         Future<ChatResponse> task = null;
@@ -107,78 +116,122 @@ public class AiChatbotService implements ChatbotService {
         } finally {
             if (task != null && !task.isDone()) task.cancel(true);
         }
-        return rule.reply(question);
+        return rule.reply(question, context);
     }
 
     private ChatResponse answer(String question) {
         String layout = RuleBasedChatbotService.layout(question);
         BigDecimal budget = RuleBasedChatbotService.budget(question);
-        String query = catalogQuery(question);
-        if (query.isBlank()) return null;
+        var catalog = products.findPublicProducts();
+        String genericQuery = catalogQuery(question, Set.of());
+        String query = catalogQuery(question, catalogTerms(catalog));
+        String category = RuleBasedChatbotService.catalogCategory(question);
+        if (query.isBlank()) return category == null ? rule.clarify() : null;
+
+        boolean explanation = RuleBasedChatbotService.isExplanation(question);
+        var ids = explanation ? List.<Long>of() : searchProducts(query, layout, budget, category, catalog);
+        if (!explanation && ids.isEmpty() && (layout != null || budget != null)) return null;
+        if (genericQuery.isBlank()) return catalogResult(ids, layout, budget, category);
 
         var filters = new FilterExpressionBuilder();
-        var productFilter = filters.and(filters.eq("type", "PRODUCT"), filters.eq("status", "ACTIVE"));
-        if (layout != null) productFilter = filters.and(productFilter, filters.eq("layout", layout));
-        List<Long> retrieved = store.similaritySearch(SearchRequest.builder().query(query).topK(8)
-                .similarityThreshold(0.5).filterExpression(productFilter.build()).build()).stream()
-            .map(AiChatbotService::productId).filter(id -> id != null).distinct().toList();
-        var knowledge = store.similaritySearch(SearchRequest.builder().query(query).topK(3)
-            .similarityThreshold(0.5).filterExpression(filters.eq("type", "KNOWLEDGE").build()).build());
-        var candidates = eligibleProducts(retrieved, layout, budget).stream()
-            .sorted(Comparator.comparing(product -> product.getStockQuantity() == 0)).limit(3).toList();
-        if (knowledge.isEmpty() && candidates.isEmpty()) return null;
-
-        String catalog = candidates.stream().map(product -> "%d | %s | %s | %s".formatted(
-                product.getId(), product.getName(), product.getLayout(), product.getSwitchType()))
-            .collect(Collectors.joining("\n"));
+        var knowledge = store.similaritySearch(SearchRequest.builder().query(genericQuery).topK(3)
+            .similarityThreshold(KNOWLEDGE_SIMILARITY)
+            .filterExpression(filters.eq("type", "KNOWLEDGE").build()).build());
+        if (knowledge.isEmpty()) return catalogResult(ids, layout, budget, category);
         String reference = knowledge.stream().map(Document::getText).collect(Collectors.joining("\n\n"));
         ChatAnswer answer = chat.prompt().system(systemPrompt).user("""
-            Từ khóa câu hỏi: %s
-            Sản phẩm (ID | tên | layout | switch):
-            %s
+            Từ khóa tư vấn: %s
             Kiến thức tham khảo:
             %s
-            """.formatted(query, catalog, reference)).call().entity(ChatAnswer.class);
-        if (answer == null || answer.answer() == null || answer.answer().isBlank() || answer.productIds() == null
-                || PRODUCT_CLAIM.matcher(RuleBasedChatbotService.normalize(answer.answer())).find()) {
-            return null;
+            """.formatted(genericQuery, reference)).call().entity(ChatAnswer.class);
+        if (answer == null || answer.answer() == null || answer.answer().isBlank()
+                || PRODUCT_CLAIM.matcher(RuleBasedChatbotService.normalize(answer.answer())).find()
+                || mentionsProduct(answer.answer(), catalog)) {
+            return catalogResult(ids, layout, budget, category);
         }
-
-        var allowed = candidates.stream().map(Product::getId).collect(Collectors.toSet());
-        var selected = new LinkedHashSet<>(answer.productIds());
-        selected.retainAll(allowed);
-        var cards = eligibleProducts(List.copyOf(selected), layout, budget).stream()
-            .sorted(Comparator.comparing(product -> product.getStockQuantity() == 0))
-            .map(ChatProductResponse::from).toList();
-        if (!selected.isEmpty() && cards.size() != selected.size()) return null;
+        var cards = eligibleProducts(ids, layout, budget, category);
+        if (!explanation && cards.isEmpty() && (layout != null || budget != null)) return null;
         return new ChatResponse(answer.answer(), cards, List.of(), "ai");
     }
 
-    // Chỉ gửi từ vựng tư vấn đã soạn và token của tên/nhãn hiệu công khai trong danh mục.
-    // Không gửi câu gốc, dữ liệu tài khoản hoặc lịch sử phiên ra Gemini.
-    private String catalogQuery(String question) {
-        var allowed = new HashSet<>(KEYBOARD_WORDS);
-        for (Product product : products.findPublicProducts()) {
+    private ChatResponse catalogResult(List<Long> ids, String layout, BigDecimal budget, String category) {
+        var cards = eligibleProducts(ids, layout, budget, category);
+        return cards.isEmpty() ? null : rule.catalogResults(cards);
+    }
+
+    private List<Long> searchProducts(String query, String layout, BigDecimal budget,
+                                      String category, List<Product> catalog) {
+        var categoryIds = catalog.stream().filter(p -> eligibleCategory(p, category))
+            .map(p -> p.getCategory().getId()).distinct().toArray();
+        if (categoryIds.length == 0) return List.of();
+
+        var filters = new FilterExpressionBuilder();
+        var productFilter = filters.and(filters.eq("type", "PRODUCT"), filters.eq("status", "ACTIVE"));
+        productFilter = filters.and(productFilter, filters.in("categoryId", categoryIds));
+        if (layout != null) productFilter = filters.and(productFilter, filters.eq("layout", layout));
+        if (budget != null) productFilter = filters.and(productFilter, filters.lte("price", budget));
+        return store.similaritySearch(SearchRequest.builder().query(query).topK(8)
+                .similarityThreshold(PRODUCT_SIMILARITY).filterExpression(productFilter.build()).build()).stream()
+            .map(AiChatbotService::productId).filter(id -> id != null).distinct().toList();
+    }
+
+    private List<ChatProductResponse> eligibleProducts(List<Long> ids, String layout, BigDecimal budget, String category) {
+        if (ids.isEmpty()) return List.of();
+        Map<Long, Product> found = products.findPublicProductsByIds(ids).stream()
+            .filter(product -> eligibleCategory(product, category))
+            .filter(product -> layout == null || layout.equalsIgnoreCase(product.getLayout()))
+            .filter(product -> budget == null || product.getPrice().compareTo(budget) <= 0)
+            .collect(Collectors.toMap(Product::getId, product -> product));
+        return ids.stream().map(found::get).filter(product -> product != null)
+            .sorted(Comparator.comparing(product -> product.getStockQuantity() == 0))
+            .limit(3).map(ChatProductResponse::from).toList();
+    }
+
+    private static boolean eligibleCategory(Product product, String category) {
+        String slug = product.getCategory().getSlug();
+        return category == null ? !"dung-cu-phu-kien".equals(slug) : category.equals(slug);
+    }
+
+    private static Set<String> catalogTerms(List<Product> catalog) {
+        var terms = new HashSet<String>();
+        for (Product product : catalog) {
             String catalogName = RuleBasedChatbotService.normalize(product.getName() + " "
                 + (product.getBrand() == null ? "" : product.getBrand()));
             PRODUCT_TEXT.matcher(catalogName).results().map(result -> result.group())
-                .filter(token -> token.chars().anyMatch(Character::isLetter)).forEach(allowed::add);
+                .filter(token -> token.chars().anyMatch(Character::isLetter)).forEach(terms::add);
         }
-        return PRODUCT_TEXT.matcher(question).results().map(result -> result.group())
-            .filter(allowed::contains).collect(Collectors.joining(" "));
+        return terms;
     }
 
-    private List<Product> eligibleProducts(List<Long> ids, String layout, BigDecimal budget) {
-        Map<Long, Product> found = ids.isEmpty() ? Map.of() : products.findPublicProductsByIds(ids).stream()
-            .filter(product -> layout == null || layout.equalsIgnoreCase(product.getLayout()))
-            .filter(product -> budget == null || product.getPrice().compareTo(budget) <= 0)
-            .collect(Collectors.toMap(Product::getId, Function.identity()));
-        return ids.stream().map(found::get).filter(product -> product != null).toList();
+    // Chỉ dùng cụm tư vấn đã soạn và từ danh mục công khai. Chỉ cụm tư vấn được gửi vào prompt.
+    private static String catalogQuery(String question, Set<String> catalogTerms) {
+        var phrases = CATALOG_PHRASE.matcher(question).results().map(match -> match.group());
+        var tokens = PRODUCT_TEXT.matcher(question).results().map(match -> match.group())
+            .filter(token -> !STOP_WORDS.contains(token))
+            .filter(token -> KEYBOARD_WORDS.contains(token) || catalogTerms.contains(token));
+        return Stream.concat(phrases, tokens).distinct().collect(Collectors.joining(" "));
+    }
+
+    private static boolean mentionsProduct(String answer, List<Product> catalog) {
+        String normalized = " " + nameWords(answer) + " ";
+        return catalog.stream().map(Product::getName).map(RuleBasedChatbotService::normalize)
+            .map(name -> MODEL_SUFFIX.matcher(name).replaceFirst(""))
+            .map(AiChatbotService::nameWords).filter(name -> !name.isBlank())
+            .flatMap(name -> Stream.concat(Stream.of(name), MODEL_CODE.matcher(name).results().map(match -> match.group())))
+            .anyMatch(name -> normalized.contains(" " + name + " "));
+    }
+
+    private static String nameWords(String text) {
+        return RuleBasedChatbotService.normalize(text).replaceAll("[^a-z0-9]+", " ").strip();
+    }
+
+    private static Set<String> words(String text) {
+        return Set.of(text.strip().split("\\s+"));
     }
 
     private static Long productId(Document document) {
         return document.getMetadata().get("productId") instanceof Number id ? id.longValue() : null;
     }
 
-    public record ChatAnswer(String answer, List<Long> productIds) {}
+    public record ChatAnswer(String answer) {}
 }

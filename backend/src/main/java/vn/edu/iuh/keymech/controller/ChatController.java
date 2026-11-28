@@ -34,7 +34,7 @@ public class ChatController {
     public ResponseEntity<ChatResponse> ask(@Valid @RequestBody ChatRequest request, HttpSession session) {
         synchronized (WebUtils.getSessionMutex(session)) {
             rateLimiter.checkAndRecord(session);
-            ChatResponse response = chatbot.reply(request.message());
+            ChatResponse response = chatbot.reply(request.message(), request.context());
             List<ChatMessageResponse> history = new ArrayList<>(history(session));
             history.add(new ChatMessageResponse("user", request.message()));
             history.add(new ChatMessageResponse("assistant", response.answer()));
