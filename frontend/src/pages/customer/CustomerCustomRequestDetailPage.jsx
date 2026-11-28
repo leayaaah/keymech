@@ -4,6 +4,7 @@ import customRequestApi from '../../api/customRequestApi';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
+import CustomConfigurationSummary from '../../components/CustomConfigurationSummary';
 import { formatDateTime } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
 import { getFeatureErrorMessage } from '../../utils/apiError';
@@ -148,17 +149,7 @@ export function CustomerCustomRequestDetailPage() {
         <section className="km-account-card">
           <h2>Cấu hình của bạn</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-base)' }}>
-            <div>Layout: {req.layout}</div>
-            <div>
-              Switch: {[req.switchType, req.switchName].filter(Boolean).join(' • ')}
-            </div>
-            {req.caseMaterial && <div>Case: {req.caseMaterial}</div>}
-            {req.keycapSet && <div>Keycap: {req.keycapSet}</div>}
-            <div>
-              Lube switch: {req.lubeSwitch ? 'Có' : 'Không'} • Hot-swap: {req.hotSwap ? 'Có' : 'Không'}
-            </div>
-            {req.ledType && <div>Đèn LED: {req.ledType}</div>}
-            {req.budget != null && <div>Ngân sách: {formatVND(req.budget)}</div>}
+            <CustomConfigurationSummary request={req} />
           </div>
           {req.note && (
             <p className="km-field-hint" style={{ fontSize: 'var(--text-sm)' }}>

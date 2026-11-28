@@ -39,20 +39,22 @@ public class CustomRequestService {
     private final CustomRequestRepository requests;
     private final CustomRequestHistoryRepository history;
     private final UserRepository users;
+    private final CustomCatalogService catalog;
 
     @Transactional
     public CustomRequestResponse create(long actorId, CustomRequestInput input) {
+        var selection = catalog.select(input);
         CustomRequest request = new CustomRequest();
         String code = UUID.randomUUID().toString().replace("-", "");
         request.setRequestCode("CUS-" + code.substring(0, 26));
         request.setUser(users.getReferenceById(actorId));
-        request.setLayout(input.layout());
-        request.setSwitchType(input.switchType() + CustomRequestResponse.SWITCH_SEPARATOR + input.switchName().strip());
-        request.setCaseMaterial(input.caseMaterial());
-        request.setKeycapSet(input.keycapSet());
-        request.setRgbOption(input.ledType());
-        request.setLubing(Boolean.TRUE.equals(input.lubeSwitch()));
-        request.setHotSwap(!Boolean.FALSE.equals(input.hotSwap()));
+        request.setLayout(selection.layout());
+        String switchPrefix = selection.switchType() + CustomRequestResponse.SWITCH_SEPARATOR;
+        request.setSwitchType(switchPrefix + truncate(selection.switchName(), 80 - switchPrefix.length()));
+        if (!selection.caseMaterial().isBlank()) request.setCaseMaterial(truncate(selection.caseMaterial(), 20));
+        request.setKeycapSet(truncate(selection.keycapName(), 120));
+        request.setHotSwap(selection.hotSwap());
+        request.getComponents().addAll(selection.components());
         request.setBudget(input.budget());
         request.setNote(input.note());
         requests.save(request);
@@ -150,11 +152,16 @@ public class CustomRequestService {
 
     private CustomRequestResponse detail(CustomRequest request, boolean staffView) {
         return CustomRequestResponse.from(request,
-                history.findByCustomRequestIdOrderByChangedAtDescIdDesc(request.getId()), staffView);
+                history.findByCustomRequestIdOrderByChangedAtDescIdDesc(request.getId()), staffView, true);
     }
 
     private PageResponse<CustomRequestResponse> summarize(Page<CustomRequest> page, boolean staffView) {
-        return PageResponse.of(page.map(request -> CustomRequestResponse.from(request, List.of(), staffView)));
+        return PageResponse.of(page.map(request -> CustomRequestResponse.from(request, List.of(), staffView, false)));
+    }
+
+    private static String truncate(String value, int length) {
+        int limit = Math.min(length, value.codePointCount(0, value.length()));
+        return value.substring(0, value.offsetByCodePoints(0, limit));
     }
 
     private PageRequest pagination(int page, int size) {

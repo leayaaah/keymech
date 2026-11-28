@@ -71,6 +71,12 @@ Staff và Admin đặt số lượng qua `PATCH /api/staff/products/{id}/stock` 
 - Để chạy `ChatbotRagIntegrationTests`, đặt `RAG_TEST_DB_URL`, `RAG_TEST_DB_USERNAME` và `RAG_TEST_DB_PASSWORD` trỏ tới MariaDB thử nghiệm riêng đã nạp `01-schema.sql` và `02-data.sql`. Test chạy chuỗi tư vấn Custom, ghi sản phẩm và dựng lại `vector_store` bằng Gemini giả lập trên máy.
 - Chạy `postman collection run docs/chatbot.postman_collection.json` từ thư mục gốc để kiểm tra lời chào và quyền Guest trên backend đang chạy ở cổng 8080.
 
+## Custom từ danh mục
+
+Với CSDL đã khởi tạo trước khi có bảng linh kiện C‑03, áp dụng `database/04-custom-request-components.sql` trước khi khởi động backend mới. Form chỉ hiển thị kit và linh kiện có đủ thông số tương thích. Nút “Hỏi về tương thích” mở chatbot với câu hỏi soạn sẵn để khách xem lại trước khi gửi.
+
+Seed `database/03-custom-components-dev.sql` chỉ dùng khi muốn demo đủ năm layout trên CSDL dev/test. Xem [hợp đồng API, thông số sản phẩm và cách nạp SQL bằng Docker](docs/custom-request-components.md).
+
 ## Cấu trúc
 
 ```

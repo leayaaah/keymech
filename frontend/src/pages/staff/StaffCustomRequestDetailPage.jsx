@@ -4,6 +4,7 @@ import customRequestApi from '../../api/customRequestApi';
 import Loading from '../../components/Loading';
 import ErrorState from '../../components/ErrorState';
 import formatVND from '../../utils/formatVND';
+import CustomConfigurationSummary from '../../components/CustomConfigurationSummary';
 import { formatDateTime } from '../../utils/formatDate';
 import { customStatusLabels } from '../../utils/orderLabels';
 import { getFeatureErrorMessage } from '../../utils/apiError';
@@ -135,17 +136,7 @@ export function StaffCustomRequestDetailPage() {
       <div className="km-form-row-2">
         <section className="km-panel" style={{ padding: 'var(--space-6)' }}>
           <h2 style={{ fontSize: 'var(--text-xl)' }}>Cấu hình yêu cầu</h2>
-          <div>Layout: {req.layout}</div>
-          <div>
-            Switch: {[req.switchType, req.switchName].filter(Boolean).join(' • ')}
-          </div>
-          {req.caseMaterial && <div>Case: {req.caseMaterial}</div>}
-          {req.keycapSet && <div>Keycap: {req.keycapSet}</div>}
-          <div>
-            Lube: {req.lubeSwitch ? 'Có' : 'Không'} • Hot-swap: {req.hotSwap ? 'Có' : 'Không'}
-          </div>
-          {req.ledType && <div>Đèn LED: {req.ledType}</div>}
-          {req.budget != null && <div>Ngân sách dự kiến: {formatVND(req.budget)}</div>}
+          <CustomConfigurationSummary request={req} />
           {req.quotedPrice != null && (
             <div style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
               {req.status === 'PENDING' ? 'Giá đã lưu' : 'Giá đã báo'}: {formatVND(req.quotedPrice)}

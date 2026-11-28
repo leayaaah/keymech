@@ -1,0 +1,61 @@
+{
+  "info": {
+    "name": "KeyMech C-03 - Yêu cầu Custom từ danh mục",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "customerEmail", "value": "" },
+    { "key": "customerPassword", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Đăng nhập Customer",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/auth/login",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{customerEmail}}\",\"password\":\"{{customerPassword}}\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Đăng nhập thành công', () => pm.response.to.have.status(200));"
+      ] } }]
+    },
+    {
+      "name": "Lấy các lựa chọn tương thích",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/custom-requests/components" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Danh mục có cấu hình hoàn chỉnh', () => {",
+        "  pm.response.to.have.status(200);",
+        "  const options = pm.response.json();",
+        "  pm.expect(options).to.be.an('array').that.is.not.empty;",
+        "  const option = options[0];",
+        "  pm.collectionVariables.set('kitId', option.kit.productId);",
+        "  pm.collectionVariables.set('switchId', option.switches[0].productId);",
+        "  pm.collectionVariables.set('switchQuantity', option.switches[0].quantity);",
+        "  pm.collectionVariables.set('keycapId', option.keycaps[0].productId);",
+        "  pm.collectionVariables.set('stabilizerId', option.stabilizersIncluded ? 'null' : option.stabilizers[0].productId);",
+        "});"
+      ] } }]
+    },
+    {
+      "name": "Gửi cấu hình đã chọn",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/custom-requests",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"kitProductId\":{{kitId}},\"switchProductId\":{{switchId}},\"keycapProductId\":{{keycapId}},\"stabilizerProductId\":{{stabilizerId}},\"note\":\"Kiểm thử C-03\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Đã lưu yêu cầu và đúng số gói switch', () => {",
+        "  pm.response.to.have.status(201);",
+        "  const request = pm.response.json();",
+        "  pm.expect(request.status).to.equal('PENDING');",
+        "  const selected = request.components.find(part => part.slot === 'SWITCH');",
+        "  pm.expect(selected.productId).to.equal(Number(pm.collectionVariables.get('switchId')));",
+        "  pm.expect(selected.quantity).to.equal(Number(pm.collectionVariables.get('switchQuantity')));",
+        "});"
+      ] } }]
+    }
+  ]
+}

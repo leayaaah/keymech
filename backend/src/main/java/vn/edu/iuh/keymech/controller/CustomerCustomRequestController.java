@@ -1,14 +1,17 @@
 package vn.edu.iuh.keymech.controller;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.iuh.keymech.dto.CustomRequestInput;
+import vn.edu.iuh.keymech.dto.CustomKitOption;
 import vn.edu.iuh.keymech.dto.CustomRequestResponse;
 import vn.edu.iuh.keymech.dto.PageResponse;
 import vn.edu.iuh.keymech.security.AppUserDetails;
+import vn.edu.iuh.keymech.service.CustomCatalogService;
 import vn.edu.iuh.keymech.service.CustomRequestService;
 
 @RestController
@@ -16,6 +19,12 @@ import vn.edu.iuh.keymech.service.CustomRequestService;
 @RequiredArgsConstructor
 public class CustomerCustomRequestController {
     private final CustomRequestService requests;
+    private final CustomCatalogService catalog;
+
+    @GetMapping("/components")
+    public List<CustomKitOption> components() {
+        return catalog.options();
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
