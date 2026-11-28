@@ -33,10 +33,22 @@ DB mới đã có bảng `custom_request_components` trong `01-schema.sql`. DB h
 | KMTKL ISO | Chỉ hiện switch 3 chân, keycap ISO TKL và stabilizer KMTKL gắn vít. Chọn switch silent 5 chân hoặc keycap ANSI qua API trả `400 CUSTOM_COMPONENT_INCOMPATIBLE`. |
 | KM104 ANSI | Đã kèm stabilizer. Cần 3 gói switch loại 35 chiếc và bộ keycap fullsize có cụm số. |
 
-Với Docker Compose trên PowerShell, chạy từ thư mục gốc:
+Với Docker Compose trên PowerShell, chạy migration từ thư mục gốc sau khi merge C-03. Chạy riêng khối seed khi cần dữ liệu demo trên dev/test.
 
 ```powershell
-Get-Content -Raw -Encoding UTF8 database/04-custom-request-components.sql | docker compose exec -T db sh -c 'MYSQL_PWD="$MARIADB_PASSWORD" mariadb -u "$MARIADB_USER" "$MARIADB_DATABASE"'
+& {
+  $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+  Get-Content -Raw -Encoding UTF8 database/04-custom-request-components.sql |
+    docker compose exec -T db sh -c 'MYSQL_PWD="$MARIADB_PASSWORD" mariadb --default-character-set=utf8mb4 -u "$MARIADB_USER" "$MARIADB_DATABASE"'
+}
+```
+
+```powershell
+& {
+  $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+  Get-Content -Raw -Encoding UTF8 database/03-custom-components-dev.sql |
+    docker compose exec -T db sh -c 'MYSQL_PWD="$MARIADB_PASSWORD" mariadb --default-character-set=utf8mb4 -u "$MARIADB_USER" "$MARIADB_DATABASE"'
+}
 ```
 
 Postman collection dùng biến `baseUrl`, `customerEmail`, `customerPassword`. Chạy trên môi trường thử nghiệm vì collection tạo một yêu cầu `PENDING`.
