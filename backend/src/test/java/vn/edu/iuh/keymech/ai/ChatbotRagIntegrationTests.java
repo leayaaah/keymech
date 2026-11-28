@@ -91,6 +91,17 @@ class ChatbotRagIntegrationTests {
         mvc.perform(post(REINDEX).with(user("customer").roles("CUSTOMER"))).andExpect(status().isForbidden());
         verifyCustomConversation(mvc);
 
+        CHAT_BODY.set(null);
+        for (String message : List.of("Red switch khác blue switch chỗ nào", "Linear với tactile khác nhau sao")) {
+            var response = chat(mvc, message, null);
+            assertThat(response.path("mode").asString()).isEqualTo("rule");
+            assertThat(response.path("intent").asString()).isEqualTo("switchTypeFaq");
+            assertThat(response.path("products").size()).isZero();
+        }
+        assertThat(CHAT_BODY.get()).isNull();
+        var linear = chat(mvc, "Switch linear", null);
+        assertThat(linear.path("products").size()).isPositive();
+
         long categoryId = jdbc.queryForObject("SELECT id FROM categories WHERE slug = 'ban-phim-co'", Long.class);
         String fixtureName = "RAG Keychron " + UUID.randomUUID();
         long id = catalog.createProduct(product(categoryId, fixtureName, 1_500_000, 2)).id();
@@ -158,9 +169,13 @@ class ChatbotRagIntegrationTests {
         await(() -> indexed(id) == 1);
 
         int documentCount = count("SELECT COUNT(*) FROM vector_store");
+        assertThat(jdbc.update("UPDATE vector_store SET content = 'Kiến thức cũ' WHERE content LIKE ?",
+            "## Switch theo tên gọi và độ êm%")).isEqualTo(1);
         mvc.perform(post(REINDEX).with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
             .andExpect(jsonPath("$.indexedDocuments").value(documentCount));
         assertThat(indexed(id)).isEqualTo(1);
+        assertThat(count("SELECT COUNT(*) FROM vector_store WHERE JSON_VALUE(metadata, '$.type') = 'KNOWLEDGE' "
+            + "AND content LIKE ?", "## Switch theo tên gọi và độ êm%Red thường là linear%")).isEqualTo(1);
 
         PROVIDER_ERROR.set(true);
         try {
@@ -172,12 +187,14 @@ class ChatbotRagIntegrationTests {
             PROVIDER_ERROR.set(false);
         }
 
+        CHAT_BODY.set(null);
         SLOW_CHAT.set(true);
         try {
             long started = System.nanoTime();
             mvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"message\":\"Linear và tactile khác nhau thế nào?\"}"))
+                    .content("{\"message\":\"Layout 75% là gì?\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("rule"));
+            assertThat(CHAT_BODY.get()).isNotNull();
             assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(11));
         } finally {
             SLOW_CHAT.set(false);

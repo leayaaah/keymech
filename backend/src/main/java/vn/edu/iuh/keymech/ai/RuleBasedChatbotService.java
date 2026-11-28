@@ -39,8 +39,12 @@ public class RuleBasedChatbotService implements ChatbotService {
     private static final Pattern SWITCH = Pattern.compile("\\bswitch(?:es)?\\b");
     private static final Pattern COMPATIBILITY = Pattern.compile(
         "\\b(?:tuong thich|khop|co vua|vua voi|co hop|(?:lap|gan|dung|thay|vua)\\b.{0,85}\\b(?:duoc|khong))\\b");
+    private static final Pattern SWITCH_TYPE = Pattern.compile(
+        "\\b(?:red|brown|blue|black|yellow|silver|linear|tactile|clicky|silent)\\b");
     private static final Pattern EXPLANATION = Pattern.compile(
-        "\\b(?:la gi|la sao|dung de lam gi|khac nhau|phan biet|cach chon|chon the nao|chon nhu the nao)\\b");
+        "\\b(?:la gi|la sao|dung de lam gi|so sanh|phan biet|cach chon|chon the nao|chon nhu the nao"
+            + "|khac\\s+(?:nhau|voi|cho nao|diem nao|the nao|nhu the nao|gi|sao)"
+            + "|khac\\s+(?:switch\\s+)?" + SWITCH_TYPE.pattern() + ")\\b");
     private static final Pattern SHOPPING = Pattern.compile(
         "\\b(?:mua|tim (?:ban phim|phim|switch|keycap)|goi y|gia bao nhieu|bao nhieu tien|ngan sach|duoi)\\b");
     private static final Pattern CUSTOM_BUILD = Pattern.compile(
@@ -89,6 +93,9 @@ public class RuleBasedChatbotService implements ChatbotService {
         if (advice != null) return advice;
         String layout = layout(text);
         BigDecimal maxPrice = budget(text);
+        if (isExplanation(text) && layout == null && maxPrice == null && !SHOPPING.matcher(text).find()) {
+            return clarify();
+        }
         String category = catalogCategory(text);
         String term = catalogTerm(text, category);
         if (category == null && layout == null && term == null) return clarify();
@@ -120,6 +127,9 @@ public class RuleBasedChatbotService implements ChatbotService {
         if (followUp != null) return followUp;
         boolean custom = CUSTOM_BUILD.matcher(text).find();
         ChatResponse faq = compatibilityFaq(text);
+        if (faq == null && isExplanation(text) && SWITCH_TYPE.matcher(text).find()) {
+            return response("switchTypeFaq", List.of());
+        }
         if (custom) {
             var slots = slots(text);
             if (context != null && followUpText(CUSTOM_BUILD.matcher(text).replaceAll(" "))) {
@@ -224,7 +234,7 @@ public class RuleBasedChatbotService implements ChatbotService {
 
     private ChatResponse compatibilityFaq(String text) {
         boolean compatible = COMPATIBILITY.matcher(text).find();
-        boolean explanation = EXPLANATION.matcher(text).find();
+        boolean explanation = isExplanation(text);
         if (!compatible && !explanation && SHOPPING.matcher(text).find()) return null;
         if (KEYCAP.matcher(text).find() && (compatible || explanation || text.equals("keycap"))) {
             return response(compatible ? "keycapCompatibility" : "keycapFaq", List.of());
