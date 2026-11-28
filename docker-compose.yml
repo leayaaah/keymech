@@ -5,12 +5,63 @@ services:
       MARIADB_DATABASE: keymech
       MARIADB_USER: ${DB_USERNAME:-shop}
       MARIADB_PASSWORD: ${DB_PASSWORD:-change-me}
-      MARIADB_ROOT_PASSWORD: root-change-me
-    ports: ["3306:3306"]
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root-change-me}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        if [ "$${MARIADB_USER}" = root ]; then
+          unset MARIADB_USER MARIADB_PASSWORD
+        fi
+        exec docker-entrypoint.sh mariadbd
+    ports: ["${DB_PORT:-3306}:3306"]
     volumes:
       - dbdata:/var/lib/mysql
-      - ./database/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./database/02-data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$${MARIADB_ROOT_PASSWORD}\" mariadb --protocol=tcp -h 127.0.0.1 -u root -e 'SELECT 1'"]
+      interval: 2s
+      timeout: 5s
+      start_period: 30s
+      retries: 15
+  db-setup:
+    image: mariadb:11.8
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MARIADB_DATABASE: keymech
+      MYSQL_PWD: ${MARIADB_ROOT_PASSWORD:-root-change-me}
+      KEYMECH_SEED_DEMO: ${KEYMECH_SEED_DEMO:-1}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        sql() {
+          mariadb --protocol=tcp -h db -u root --default-character-set=utf8mb4 "$${MARIADB_DATABASE}" "$$@"
+        }
+        base_tables=$$(sql -N -e "SELECT COUNT(*) FROM information_schema.tables
+          WHERE table_schema = DATABASE() AND table_name IN ('users', 'categories', 'products', 'custom_requests')")
+        if [ "$$base_tables" != 4 ]; then
+          echo "Initializing KeyMech schema"
+          sql < /setup/01-schema.sql
+        fi
+        empty_catalog=$$(sql -N -e "SELECT NOT EXISTS (SELECT 1 FROM users)
+          AND NOT EXISTS (SELECT 1 FROM categories)
+          AND NOT EXISTS (SELECT 1 FROM products)")
+        if [ "$$empty_catalog" = 1 ]; then
+          echo "Loading initial KeyMech data"
+          { cat /setup/02-data.sql; printf '\nCOMMIT;\n'; } | sql --init-command="SET autocommit=0"
+        fi
+        echo "Applying C-03 migration"
+        sql < /setup/04-custom-request-components.sql
+        if [ "$${KEYMECH_SEED_DEMO}" = 1 ]; then
+          echo "Loading Custom demo components"
+          sql < /setup/03-custom-components-dev.sql
+        fi
+        echo "KeyMech database setup complete"
+    volumes:
+      - ./database/01-schema.sql:/setup/01-schema.sql:ro
+      - ./database/02-data.sql:/setup/02-data.sql:ro
+      - ./database/03-custom-components-dev.sql:/setup/03-custom-components-dev.sql:ro
+      - ./database/04-custom-request-components.sql:/setup/04-custom-request-components.sql:ro
   mailhog:
     image: mailhog/mailhog
     ports: ["1025:1025", "8025:8025"]

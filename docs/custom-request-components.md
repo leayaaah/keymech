@@ -22,7 +22,7 @@ Sản phẩm thiếu dữ liệu để xác nhận tương thích sẽ không xu
 
 ## CSDL và kiểm thử
 
-DB mới đã có bảng `custom_request_components` trong `01-schema.sql`. DB hiện có cần chạy `04-custom-request-components.sql` trước khi chạy backend mới. Nạp `03-custom-components-dev.sql` trên dev/test để có danh mục demo cho 60%, 65%, 75%, TKL và Fullsize. Seed bổ sung khóa tương thích còn thiếu cho dữ liệu demo đã nạp và chạy lại được.
+Compose chờ MariaDB sẵn sàng rồi chạy dịch vụ `db-setup`. Dịch vụ chạy `01-schema.sql` khi thiếu bảng nền và nạp `02-data.sql` nếu các bảng người dùng, danh mục, sản phẩm đều trống. Sau đó nó áp dụng `04-custom-request-components.sql` để tạo bảng linh kiện C-03, giữ dữ liệu hiện có. Seed `03-custom-components-dev.sql` bổ sung dữ liệu demo cho 60%, 65%, 75%, TKL và Fullsize và có thể chạy lại.
 
 ### Kịch bản demo
 
@@ -33,22 +33,15 @@ DB mới đã có bảng `custom_request_components` trong `01-schema.sql`. DB h
 | KMTKL ISO | Chỉ hiện switch 3 chân, keycap ISO TKL và stabilizer KMTKL gắn vít. Chọn switch silent 5 chân hoặc keycap ANSI qua API trả `400 CUSTOM_COMPONENT_INCOMPATIBLE`. |
 | KM104 ANSI | Đã kèm stabilizer. Cần 3 gói switch loại 35 chiếc và bộ keycap fullsize có cụm số. |
 
-Với Docker Compose trên PowerShell, chạy migration từ thư mục gốc sau khi merge C-03. Chạy riêng khối seed khi cần dữ liệu demo trên dev/test.
+Chạy từ thư mục gốc và chờ `db-setup` thoát với mã `0` trước khi khởi động backend.
 
-```powershell
-& {
-  $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-  Get-Content -Raw -Encoding UTF8 database/04-custom-request-components.sql |
-    docker compose exec -T db sh -c 'MYSQL_PWD="$MARIADB_PASSWORD" mariadb --default-character-set=utf8mb4 -u "$MARIADB_USER" "$MARIADB_DATABASE"'
-}
+```sh
+docker compose up -d
+docker compose wait db-setup
 ```
 
-```powershell
-& {
-  $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-  Get-Content -Raw -Encoding UTF8 database/03-custom-components-dev.sql |
-    docker compose exec -T db sh -c 'MYSQL_PWD="$MARIADB_PASSWORD" mariadb --default-character-set=utf8mb4 -u "$MARIADB_USER" "$MARIADB_DATABASE"'
-}
-```
+Xem chi tiết bằng `docker compose logs db-setup`. Seed demo dùng cho local dev/test. Đặt `KEYMECH_SEED_DEMO=0` trong `.env` để bỏ qua lượt nạp demo.
+
+Nếu volume đã có mật khẩu root riêng, đặt `MARIADB_ROOT_PASSWORD` trong `.env` bằng mật khẩu hiện có để Compose kết nối và chạy SQL. Nếu backend đang dùng `DB_USERNAME=root`, `DB_PASSWORD` cũng cần khớp mật khẩu root hiện có.
 
 Postman collection dùng biến `baseUrl`, `customerEmail`, `customerPassword`. Chạy trên môi trường thử nghiệm vì collection tạo một yêu cầu `PENDING`.

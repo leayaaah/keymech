@@ -9,13 +9,16 @@
 
 ## Cấu hình môi trường
 
-Từ thư mục gốc, sao chép `.env.example` thành `.env` và điền thông tin kết nối. Compose và backend dùng cùng tài khoản và mật khẩu. Chạy lệnh sau để khởi động MariaDB và MailHog.
+Từ thư mục gốc, sao chép `.env.example` thành `.env` và điền thông tin kết nối. Dùng tài khoản ứng dụng `shop` theo mẫu khi tạo volume mới. Chạy các lệnh sau để khởi động MariaDB, MailHog và chờ Compose nạp dữ liệu trước khi chạy backend.
 
 ```shell
 docker compose up -d
+docker compose wait db-setup
 ```
 
 Nạp biến từ `.env` vào terminal sẽ chạy Maven và Java. Nếu chạy backend từ một thư mục khác, đặt `APP_UPLOAD_DIR` thành đường dẫn tuyệt đối đến thư mục lưu ảnh.
+
+Nếu cổng `3306` đang được MySQL trên máy sử dụng, đặt `DB_PORT=13306` và `DB_URL=jdbc:mariadb://127.0.0.1:13306/keymech` trong `.env` trước khi chạy Compose.
 
 ```bash
 # Bash hoặc Git Bash, từ thư mục gốc
@@ -73,9 +76,9 @@ Staff và Admin đặt số lượng qua `PATCH /api/staff/products/{id}/stock` 
 
 ## Custom từ danh mục
 
-Với CSDL đã khởi tạo trước khi có bảng linh kiện C‑03, áp dụng `database/04-custom-request-components.sql` trước khi khởi động backend mới. Form chỉ hiển thị kit và linh kiện có đủ thông số tương thích. Nút “Hỏi về tương thích” mở chatbot với câu hỏi soạn sẵn để khách xem lại trước khi gửi.
+Compose tự áp dụng `database/04-custom-request-components.sql` cho CSDL đã có schema cũ. Form chỉ hiển thị kit và linh kiện có đủ thông số tương thích. Nút “Hỏi về tương thích” mở chatbot với câu hỏi soạn sẵn để khách xem lại trước khi gửi.
 
-Seed `database/03-custom-components-dev.sql` chỉ dùng khi muốn demo đủ năm layout trên CSDL dev/test. Xem [hợp đồng API, thông số sản phẩm và cách nạp SQL bằng Docker](docs/custom-request-components.md).
+Compose mặc định nạp seed demo `database/03-custom-components-dev.sql` cho môi trường local. Đặt `KEYMECH_SEED_DEMO=0` trong `.env` để bỏ qua seed. Xem [hợp đồng API, thông số sản phẩm và cách khởi tạo DB bằng Docker](docs/custom-request-components.md).
 
 ## Cấu trúc
 
