@@ -37,10 +37,10 @@ class ChatProductRepositoryTests {
         products.saveAndFlush(hidden);
         entityManager.clear();
 
-        var result = chatProducts.recommend("75%", BigDecimal.valueOf(2_000_000), suffix, PageRequest.of(0, 10));
+        var result = chatProducts.recommend("75%", BigDecimal.valueOf(2_000_000), suffix, null, PageRequest.of(0, 10));
         assertEquals(1, result.getTotalElements());
         assertEquals(eligible.getId(), result.getContent().getFirst().getId());
-        assertEquals(0, chatProducts.recommend("TKL", null, suffix, PageRequest.of(0, 10)).getTotalElements());
+        assertEquals(0, chatProducts.recommend("TKL", null, suffix, null, PageRequest.of(0, 10)).getTotalElements());
     }
 
     private Product product(Category category, String name, int price, VisibilityStatus status) {

@@ -40,12 +40,12 @@ class RuleBasedChatbotServiceTest {
         product.setName("Bàn phím 75%");
         product.setPrice(BigDecimal.valueOf(1_800_000));
         product.setStockQuantity(2);
-        when(products.recommend(eq("75%"), eq(BigDecimal.valueOf(2_000_000)), eq(null), any(Pageable.class)))
+        when(products.recommend(eq("75%"), eq(BigDecimal.valueOf(2_000_000)), eq(null), eq("ban-phim-co"), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(product)));
 
         var response = chatbot.reply("Phím 75% dưới 2 triệu");
 
-        verify(products).recommend(eq("75%"), eq(BigDecimal.valueOf(2_000_000)), eq(null), any(Pageable.class));
+        verify(products).recommend(eq("75%"), eq(BigDecimal.valueOf(2_000_000)), eq(null), eq("ban-phim-co"), any(Pageable.class));
         assertEquals("rule", response.mode());
         assertEquals(1, response.products().size());
         assertEquals(BigDecimal.valueOf(1_800_000), response.products().getFirst().price());
@@ -57,7 +57,7 @@ class RuleBasedChatbotServiceTest {
     void reply_weatherQuestion_returnsOutOfScope() {
         var response = chatbot.reply("Hôm nay có mưa không?");
         assertTrue(response.answer().contains("chỉ tư vấn bàn phím"));
-        verify(products, never()).recommend(any(), any(), any(), any());
+        verify(products, never()).recommend(any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest
@@ -135,10 +135,29 @@ class RuleBasedChatbotServiceTest {
         var response = chatbot.reply("Gợi ý cấu hình tự lắp bàn phím TKL gõ êm dưới 2 triệu");
 
         assertTrue(response.answer().contains("layout TKL"));
-        assertTrue(response.answer().contains("Chưa có kit"));
+        assertTrue(response.answer().contains("Kit quá ngân sách"));
         assertTrue(response.answer().contains("chưa xác nhận mẫu này là silent"));
         assertTrue(response.answer().contains("Chưa có bộ keycap"));
-        assertEquals(List.of(2L), response.products().stream().map(ChatProductResponse::id).toList());
+        assertTrue(response.answer().contains("vượt ít nhất"));
+        assertTrue(response.products().isEmpty());
+    }
+
+    @Test
+    void reply_customNamedSwitchNeverSubstitutesAnotherColor() {
+        when(products.findPublicProducts()).thenReturn(List.of(
+            part(1, "kit-ban-phim", "Kit 75 mẫu", 900_000, 2, "75%", null,
+                "{\"keys\":84,\"includes\":\"PCB, Stabilizer\"}"),
+            part(2, "switch", "Cherry MX Red", 240_000, 2, null, "Linear", "{\"pack\":35}"),
+            part(3, "switch", "Gateron Yellow", 180_000, 9, null, "Linear", "{\"pack\":35,\"silent\":true}")));
+
+        var prompt = chatbot.reply("Tư vấn Custom");
+        assertEquals("custom", prompt.intent());
+        assertTrue(prompt.products().isEmpty());
+        var build = chatbot.reply("75%, gõ êm, switch Red", prompt.context());
+        assertEquals("red", build.context().switchName());
+        assertTrue(build.answer().contains("Chưa có switch RED"));
+        assertTrue(build.answer().contains("Ngân sách bạn dự kiến"));
+        assertEquals(List.of(1L), build.products().stream().map(ChatProductResponse::id).toList());
     }
 
     private static Product part(long id, String slug, String name, int price, int stock, String layout,
@@ -167,12 +186,12 @@ class RuleBasedChatbotServiceTest {
 
     @Test
     void reply_purchaseQuestionWithPins_stillLooksUpProducts() {
-        when(products.recommend(eq(null), eq(BigDecimal.valueOf(500_000)), eq("switch"), any(Pageable.class)))
+        when(products.recommend(eq(null), eq(BigDecimal.valueOf(500_000)), eq("switch"), eq("switch"), any(Pageable.class)))
             .thenReturn(Page.empty());
 
         chatbot.reply("Mua switch 5 chân dưới 500 nghìn");
 
-        verify(products).recommend(eq(null), eq(BigDecimal.valueOf(500_000)), eq("switch"), any(Pageable.class));
+        verify(products).recommend(eq(null), eq(BigDecimal.valueOf(500_000)), eq("switch"), eq("switch"), any(Pageable.class));
     }
 
     @ParameterizedTest
@@ -182,11 +201,11 @@ class RuleBasedChatbotServiceTest {
     })
     void reply_fullsizeAliasesAndBudget_useCatalogLayout(String question) {
         when(products.recommend(eq("Fullsize"), eq(BigDecimal.valueOf(2_000_000)),
-            eq(null), any(Pageable.class))).thenReturn(Page.empty());
+            eq(null), eq("ban-phim-co"), any(Pageable.class))).thenReturn(Page.empty());
 
         chatbot.reply(question);
 
         verify(products).recommend(eq("Fullsize"), eq(BigDecimal.valueOf(2_000_000)),
-            eq(null), any(Pageable.class));
+            eq(null), eq("ban-phim-co"), any(Pageable.class));
     }
 }

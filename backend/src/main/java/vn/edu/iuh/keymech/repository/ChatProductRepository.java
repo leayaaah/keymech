@@ -31,6 +31,7 @@ public interface ChatProductRepository extends Repository<Product, Long> {
            "AND p.category.status = vn.edu.iuh.keymech.model.enums.VisibilityStatus.ACTIVE " +
            "AND (:layout IS NULL OR lower(p.layout) = lower(:layout)) " +
            "AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
+           "AND ((:category IS NULL AND p.category.slug <> 'dung-cu-phu-kien') OR p.category.slug = :category) " +
            "AND (:term IS NULL OR lower(p.name) LIKE lower(concat('%', :term, '%')) " +
            "OR lower(p.brand) LIKE lower(concat('%', :term, '%')) " +
            "OR lower(p.switchType) LIKE lower(concat('%', :term, '%')) " +
@@ -38,5 +39,5 @@ public interface ChatProductRepository extends Repository<Product, Long> {
            "OR lower(p.specs) LIKE lower(concat('%', :term, '%')))")
     Page<Product> recommend(@Param("layout") String layout,
                             @Param("maxPrice") BigDecimal maxPrice,
-                            @Param("term") String term, Pageable pageable);
+                            @Param("term") String term, @Param("category") String category, Pageable pageable);
 }

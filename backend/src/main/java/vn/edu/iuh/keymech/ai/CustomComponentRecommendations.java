@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import vn.edu.iuh.keymech.dto.ChatContext;
 import vn.edu.iuh.keymech.dto.ChatProductResponse;
 import vn.edu.iuh.keymech.model.Product;
 import vn.edu.iuh.keymech.util.ProductSpecifications;
@@ -26,20 +28,35 @@ final class CustomComponentRecommendations {
         this.mapper = mapper;
     }
 
-    Recommendation recommend(List<Product> catalog, String layout, BigDecimal budget, boolean quiet) {
+    Recommendation recommend(List<Product> catalog, ChatContext context) {
         var available = catalog.stream().filter(product -> product.getStockQuantity() > 0)
-            .filter(product -> withinBudget(product.getPrice(), budget)).map(this::component)
+            .map(this::component)
             .sorted(Comparator.comparing((Component part) -> part.product().getPrice())
                 .thenComparing(part -> part.product().getId()))
             .toList();
 
-        Component kit = first(available, part -> part.inCategory("kit-ban-phim") && matchesLayout(part, layout));
+        var build = available.stream()
+            .filter(part -> part.inCategory("kit-ban-phim") && matchesLayout(part, context.layout()))
+            .map(kit -> build(available, kit, context))
+            .min(Comparator.comparing(Build::complete).reversed()
+                .thenComparing(candidate -> !withinBudget(candidate.subtotal(), context.budget()))
+                .thenComparing(candidate -> withinBudget(candidate.subtotal(), context.budget())
+                    && Boolean.TRUE.equals(context.quiet()) && !candidate.quiet())
+                .thenComparing(Build::subtotal))
+            .orElseGet(() -> build(available, null, context));
+        return describeBuild(build, available, context);
+    }
+
+    private Build build(List<Component> available, Component kit, ChatContext context) {
+        String layout = context.layout();
+        boolean quiet = Boolean.TRUE.equals(context.quiet());
+        String requestedSwitch = context.switchName();
         boolean bundledPcb = included(kit, "PCB");
-        Component pcb = bundledPcb ? null : first(available, part -> part.type("pcb")
+        Component pcb = bundledPcb || kit == null ? null : first(available, part -> part.type("pcb")
             && matchesLayout(part, layout) && matchesPlatform(kit, part));
         Component board = pcb == null ? kit : pcb;
         boolean bundledStabilizer = included(kit, "stabilizer");
-        Component stabilizer = bundledStabilizer ? null : first(available, part -> part.type("stabilizer")
+        Component stabilizer = bundledStabilizer || board == null ? null : first(available, part -> part.type("stabilizer")
             && matchesPlatform(board, part) && (matchesLayout(part, layout) || part.product().getLayout() == null));
         Component keycap = available.stream().filter(part -> part.inCategory("keycap"))
             .filter(part -> part.type("keycap-set") || KEYCAP_SET.matcher(part.name()).find())
@@ -48,38 +65,79 @@ final class CustomComponentRecommendations {
             .min(Comparator.comparing(part -> !matchesKeycapSpecs(board, part))).orElse(null);
 
         int keys = board == null ? 0 : board.specs().path("keys").asInt(0);
+        BigDecimal base = Stream.of(kit, pcb, stabilizer, keycap).filter(Objects::nonNull)
+            .map(part -> part.product().getPrice()).reduce(BigDecimal.ZERO, BigDecimal::add);
         SwitchChoice switches = available.stream().filter(part -> part.inCategory("switch"))
-            .filter(part -> !quiet || part.silent() || "Linear".equalsIgnoreCase(part.product().getSwitchType())
+            .filter(part -> requestedSwitch == null || RuleBasedChatbotService.matchesSwitch(part.product().getName(), requestedSwitch))
+            .filter(part -> requestedSwitch != null || !quiet || part.silent() || "Linear".equalsIgnoreCase(part.product().getSwitchType())
                 || "Tactile".equalsIgnoreCase(part.product().getSwitchType()))
             .filter(part -> !conflicts(board, part, "switchFamily") && supportsPins(board, part))
             .map(part -> new SwitchChoice(part, keys))
             .filter(choice -> choice.quantity() <= choice.part().product().getStockQuantity())
-            .filter(choice -> withinBudget(choice.cost(), budget))
-            .min(Comparator.comparing((SwitchChoice choice) -> quiet && !choice.part().silent())
+            .min(Comparator.comparing(SwitchChoice::quantityKnown).reversed()
+                .thenComparing(choice -> !withinBudget(base.add(choice.cost()), context.budget()))
+                .thenComparing(choice -> withinBudget(base.add(choice.cost()), context.budget())
+                    && quiet && !choice.part().silent())
                 .thenComparing(SwitchChoice::cost)).orElse(null);
+        return new Build(kit, pcb, stabilizer, keycap, switches, bundledPcb, bundledStabilizer,
+            base.add(switches == null ? BigDecimal.ZERO : switches.cost()));
+    }
 
-        String pcbText = bundledPcb ? "PCB đi kèm kit " + kit.product().getName() + "." :
+    private static Recommendation describeBuild(Build build, List<Component> available, ChatContext context) {
+        var kit = build.kit();
+        var pcb = build.pcb();
+        var stabilizer = build.stabilizer();
+        var keycap = build.keycap();
+        var switches = build.switches();
+        var board = pcb == null ? kit : pcb;
+        BigDecimal budget = context.budget();
+        boolean quiet = Boolean.TRUE.equals(context.quiet());
+        boolean overBudget = !withinBudget(build.subtotal(), budget);
+        String pcbText = build.bundledPcb() ? "PCB đi kèm kit " + kit.product().getName() + "." :
             describe(pcb, "Chưa có PCB rời phù hợp trong danh mục đang bán.");
-        String stabilizerText = bundledStabilizer ? "Stabilizer đi kèm kit " + kit.product().getName() + "." :
-            describe(stabilizer, "Chưa có bộ stabilizer rời phù hợp trong danh mục đang bán.");
+        String stabilizerText = build.bundledStabilizer() ? "Stabilizer đi kèm kit " + kit.product().getName() + "." :
+            describe(stabilizer, "Chưa xác nhận được stabilizer đi kèm hoặc bộ rời tương thích.");
         String keycapText = describe(keycap, "Chưa có bộ keycap phù hợp trong danh mục đang bán.")
             + (keycap != null && !matchesKeycapSpecs(board, keycap) ? " Cần đối chiếu stem và bố trí phím thực tế." : "");
 
         List<ChatProductResponse> cards = new ArrayList<>();
-        BigDecimal subtotal = BigDecimal.ZERO;
-        for (Component part : Stream.of(kit, pcb, switches == null ? null : switches.part(), stabilizer, keycap)
-                .filter(candidate -> candidate != null).toList()) {
-            int quantity = switches != null && part == switches.part() ? switches.quantity() : 1;
-            cards.add(ChatProductResponse.from(part.product(), quantity));
-            subtotal = subtotal.add(part.product().getPrice().multiply(BigDecimal.valueOf(quantity)));
+        String total = build.subtotal().signum() == 0 ? "" : "Tạm tính các món tìm được: " + money(build.subtotal()) + ". ";
+        if (overBudget) {
+            total += "Cấu hình gợi ý vượt " + (build.complete() ? "" : "ít nhất ")
+                + money(build.subtotal().subtract(budget)) + " so với ngân sách.";
+            var alternatives = available.stream()
+                .filter(part -> part.inCategory("ban-phim-co") && matchesLayout(part, context.layout()))
+                .filter(part -> withinBudget(part.product().getPrice(), budget))
+                .sorted(Comparator.comparing((Component part) -> quiet && !part.silent())
+                    .thenComparing(part -> !part.specs().path("hotSwap").asBoolean(false)))
+                .limit(3).toList();
+            alternatives.stream().map(part -> ChatProductResponse.from(part.product())).forEach(cards::add);
+            if (!cards.isEmpty()) {
+                total += " Bạn có thể xem bàn phím lắp sẵn cùng layout trong ngân sách:";
+                for (var part : alternatives) {
+                    total += "\n- " + part.product().getName() + " — " + readyMadeSpecs(part) + ".";
+                }
+            } else total += " Shop chưa có bàn phím lắp sẵn cùng layout trong ngân sách này.";
+        } else {
+            for (Component part : Stream.of(kit, pcb, switches == null ? null : switches.part(), stabilizer, keycap)
+                    .filter(Objects::nonNull).toList()) {
+                int quantity = switches != null && part == switches.part() ? switches.quantity() : 1;
+                cards.add(ChatProductResponse.from(part.product(), quantity));
+            }
+            if (budget == null) total += "Ngân sách bạn dự kiến là bao nhiêu?";
+            else if (build.complete()) total += "Linh kiện nằm trong ngân sách, chưa tính phí lắp.";
+            else total += "Chưa thể xác nhận đủ cấu hình trong ngân sách vì còn thiếu linh kiện hoặc thông số tương thích.";
         }
-        String total = "";
-        if (!cards.isEmpty() && (switches == null || switches.quantityKnown())) {
-            total = "Tạm tính các món có thẻ: " + money(subtotal) + ".";
-            if (!withinBudget(subtotal, budget)) total += " Tổng các món này vượt ngân sách bạn đưa ra.";
-        }
-        return new Recommendation(describe(kit, "Chưa có kit còn hàng phù hợp với layout và ngân sách."),
-            pcbText, describeSwitch(switches, quiet), stabilizerText, keycapText, total, List.copyOf(cards));
+        return new Recommendation(describe(kit, "Chưa có kit còn hàng phù hợp với layout."),
+            pcbText, describeSwitch(switches, quiet, context.switchName()), stabilizerText, keycapText, total,
+            List.copyOf(cards), overBudget);
+    }
+
+    private static String readyMadeSpecs(Component part) {
+        var hotSwap = part.specs().path("hotSwap");
+        String socket = hotSwap.isBoolean() ? (hotSwap.asBoolean() ? "có hot-swap" : "không hot-swap")
+            : "chưa xác nhận hot-swap";
+        return socket + ", " + part.silentLabel();
     }
 
     private Component component(Product product) {
@@ -130,15 +188,16 @@ final class CustomComponentRecommendations {
         return part == null ? unavailable : part.product().getName() + " — " + money(part.product().getPrice()) + ".";
     }
 
-    private static String describeSwitch(SwitchChoice choice, boolean quiet) {
-        if (choice == null) return "Chưa có switch còn hàng phù hợp với yêu cầu.";
+    private static String describeSwitch(SwitchChoice choice, boolean quiet, String requested) {
+        if (choice == null) return requested == null ? "Chưa có switch còn hàng phù hợp với yêu cầu."
+            : "Chưa có switch " + requested.toUpperCase(Locale.ROOT) + " đủ hàng và phù hợp với cấu hình.";
         String result = describe(choice.part(), "");
         if (choice.quantityKnown() && choice.quantity() > 1) {
             result += " Cần " + choice.quantity() + " gói, tạm tính " + money(choice.cost()) + ".";
         } else if (!choice.quantityKnown()) {
             result += " Cần biết số phím và số switch mỗi đơn vị bán để tính đủ số lượng.";
         }
-        if (quiet && !choice.part().silent()) result += " Dữ liệu shop chưa xác nhận mẫu này là silent.";
+        if (quiet && !choice.part().silent()) result += " " + choice.part().silentLabel() + ".";
         return result;
     }
 
@@ -147,14 +206,32 @@ final class CustomComponentRecommendations {
     }
 
     record Recommendation(String kit, String pcb, String switches, String stabilizer, String keycap,
-                          String total, List<ChatProductResponse> products) {}
+                          String total, List<ChatProductResponse> products, boolean overBudget) {}
+
+    private record Build(Component kit, Component pcb, Component stabilizer, Component keycap, SwitchChoice switches,
+                         boolean bundledPcb, boolean bundledStabilizer, BigDecimal subtotal) {
+        boolean complete() {
+            return kit != null && (bundledPcb || pcb != null) && (bundledStabilizer || stabilizer != null)
+                && switches != null && switches.quantityKnown() && keycap != null
+                && matchesKeycapSpecs(pcb == null ? kit : pcb, keycap);
+        }
+
+        boolean quiet() { return switches != null && switches.part().silent(); }
+    }
 
     private record Component(Product product, JsonNode specs) {
         String field(String name) { return specs.path(name).asString(""); }
         String name() { return RuleBasedChatbotService.normalize(product.getName()); }
         boolean type(String type) { return type.equalsIgnoreCase(field("componentType")); }
         boolean inCategory(String slug) { return slug.equals(product.getCategory().getSlug()); }
-        boolean silent() { return specs.path("silent").asBoolean(false) || SILENT.matcher(name()).find(); }
+        boolean silent() {
+            var flag = specs.path("silent");
+            return flag.isBoolean() ? flag.asBoolean() : SILENT.matcher(name()).find();
+        }
+        String silentLabel() {
+            if (silent()) return "có switch silent";
+            return specs.path("silent").isBoolean() ? "mẫu này không phải silent" : "dữ liệu shop chưa xác nhận mẫu này là silent";
+        }
     }
 
     private record SwitchChoice(Component part, int keyCount) {
