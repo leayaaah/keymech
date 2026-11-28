@@ -1,6 +1,8 @@
 package vn.edu.iuh.keymech.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManager;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,7 +17,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 import vn.edu.iuh.keymech.model.User;
+import vn.edu.iuh.keymech.model.Category;
+import vn.edu.iuh.keymech.model.Product;
 import vn.edu.iuh.keymech.model.enums.Role;
+import vn.edu.iuh.keymech.model.enums.VisibilityStatus;
+import vn.edu.iuh.keymech.repository.CategoryRepository;
+import vn.edu.iuh.keymech.repository.ProductRepository;
 import vn.edu.iuh.keymech.repository.UserRepository;
 import vn.edu.iuh.keymech.security.AppUserDetails;
 
@@ -36,6 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PostUiApiIntegrationTests {
     @Autowired WebApplicationContext context;
     @Autowired UserRepository users;
+    @Autowired ProductRepository products;
+    @Autowired CategoryRepository categories;
+    @Autowired EntityManager entityManager;
 
     private MockMvc mvc;
     private RequestPostProcessor customer;
@@ -67,6 +77,9 @@ class PostUiApiIntegrationTests {
                 mvc.perform(get(paths[path]).with(actors[actor])).andExpect(status().is(expected[actor][path]));
             }
         }
+        mvc.perform(get("/api/custom-requests/components")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/custom-requests/components").with(staff)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/custom-requests/components").with(admin)).andExpect(status().isForbidden());
     }
 
     @Test
@@ -111,13 +124,13 @@ class PostUiApiIntegrationTests {
     @Test
     @DisplayName("TC-CUS-09, TC-CUS-13: bảo vệ yêu cầu và từ chối báo giá cũ")
     void customerCannotReadAnotherRequestOrAcceptAStaleQuote() throws Exception {
+        BuildFixture parts = buildFixture(true);
         var created = mvc.perform(post("/api/custom-requests").with(customer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                            {"layout":"Fullsize","switchType":"Linear","switchName":"Milky Yellow","budget":1000000}
-                            """))
+                        .content(parts.payload(null)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.components.length()").value(3))
                 .andReturn();
         Number id = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
         String mine = "/api/custom-requests/my/" + id;
@@ -159,6 +172,114 @@ class PostUiApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACCEPTED"))
                 .andExpect(jsonPath("$.history[0].toStatus").value("ACCEPTED"));
+    }
+
+    @Test
+    @DisplayName("C-03: lọc linh kiện theo kit và giữ bản chụp cấu hình khi gửi")
+    void customUsesCatalogPartsAndPreservesSnapshot() throws Exception {
+        BuildFixture parts = buildFixture(false);
+        mvc.perform(get("/api/custom-requests/components").with(customer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[?(@.kit.productId == %d)].switches[0].quantity".formatted(parts.kit().getId())).value(org.hamcrest.Matchers.hasItem(3)));
+
+        var result = mvc.perform(post("/api/custom-requests").with(customer)
+                .contentType(MediaType.APPLICATION_JSON).content(parts.payload(parts.stabilizer().getId())))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.layout").value("75%"))
+            .andExpect(jsonPath("$.components.length()").value(4))
+            .andExpect(jsonPath("$.components[1].slot").value("SWITCH"))
+            .andExpect(jsonPath("$.components[1].quantity").value(3))
+            .andReturn();
+        Number id = JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+        String originalSwitch = parts.switches().getName();
+        parts.switches().setName("Tên sản phẩm đã cập nhật " + UUID.randomUUID());
+        parts.switches().setPrice(BigDecimal.valueOf(300_000));
+        entityManager.flush();
+        entityManager.clear();
+        mvc.perform(get("/api/custom-requests/my/" + id).with(customer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.components[1].name").value(originalSwitch))
+            .andExpect(jsonPath("$.components[1].unitPrice").value(205_000));
+    }
+
+    @Test
+    @DisplayName("C-03: từ chối cấu hình nhập tay, thiếu stabilizer, sai thông số, ẩn hoặc thiếu hàng")
+    void customRejectsInvalidConfigurations() throws Exception {
+        BuildFixture parts = buildFixture(false);
+        submitCustom("{\"layout\":\"75%\",\"switchName\":\"Tự nhập\"}", 400, "VALIDATION_ERROR");
+        submitCustom(parts.payload(null), 400, "VALIDATION_ERROR");
+
+        String validSwitch = parts.switches().getSpecs();
+        parts.switches().setSpecs(validSwitch.replace("\"pinCount\":5", "\"pinCount\":6"));
+        entityManager.flush();
+        submitCustom(parts.payload(parts.stabilizer().getId()), 400, "CUSTOM_COMPONENT_INCOMPATIBLE");
+        parts.switches().setSpecs(validSwitch);
+
+        String validKeycap = parts.keycaps().getSpecs();
+        parts.keycaps().setSpecs(validKeycap.replace("ANSI", "ISO"));
+        entityManager.flush();
+        submitCustom(parts.payload(parts.stabilizer().getId()), 400, "CUSTOM_COMPONENT_INCOMPATIBLE");
+        parts.keycaps().setSpecs(validKeycap);
+        parts.keycaps().setLayout("65%");
+        entityManager.flush();
+        submitCustom(parts.payload(parts.stabilizer().getId()), 400, "CUSTOM_COMPONENT_INCOMPATIBLE");
+        parts.keycaps().setLayout("75%");
+
+        parts.switches().setStockQuantity(2);
+        entityManager.flush();
+        submitCustom(parts.payload(parts.stabilizer().getId()), 409, "OUT_OF_STOCK");
+        parts.switches().setStockQuantity(10);
+        parts.kit().setStatus(VisibilityStatus.HIDDEN);
+        entityManager.flush();
+        submitCustom(parts.payload(parts.stabilizer().getId()), 409, "CUSTOM_COMPONENT_UNAVAILABLE");
+    }
+
+    private void submitCustom(String payload, int expectedStatus, String errorCode) throws Exception {
+        mvc.perform(post("/api/custom-requests").with(customer)
+                .contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().is(expectedStatus)).andExpect(jsonPath("$.error").value(errorCode));
+    }
+
+    private BuildFixture buildFixture(boolean bundledStabilizer) {
+        String keycapFit = "\"stem\":\"MX\",\"physicalLayout\":\"ANSI\",\"spacebarWidth\":\"6.25u\",\"rightShiftWidth\":\"1.75u\"";
+        Product kit = part("kit-ban-phim", "Kit", null, """
+            {"keys":84,"includes":"Case, Plate, PCB%s","hotSwap":true,"switchFamily":"MX","supportedPins":[3,5],
+             "platform":"Test75","stabilizerMount":"plate-mount","stabilizerSizes":["6.25u","2u"],%s}
+            """.formatted(bundledStabilizer ? ", Stabilizer" : "", keycapFit));
+        Product switches = part("switch", "Switch", "Linear", """
+            {"pack":35,"pinCount":5,"switchFamily":"MX","stem":"MX"}
+            """);
+        Product keycaps = part("keycap", "Keycap", null, "{\"componentType\":\"keycap-set\"," + keycapFit + "}");
+        Product stabilizer = bundledStabilizer ? null : part("dung-cu-phu-kien", "Stabilizer", null, """
+            {"componentType":"stabilizer","platform":"Test75","mount":"plate-mount","sizes":["2u","6.25u"]}
+            """);
+        return new BuildFixture(kit, switches, keycaps, stabilizer);
+    }
+
+    private Product part(String slug, String name, String switchType, String specs) {
+        Category category = categories.findBySlug(slug).orElseGet(() -> {
+            Category created = new Category();
+            created.setSlug(slug);
+            created.setName("Danh mục test " + slug);
+            return categories.saveAndFlush(created);
+        });
+        Product product = new Product();
+        product.setCategory(category);
+        product.setName(name + " test " + UUID.randomUUID());
+        product.setLayout("75%");
+        product.setPrice(BigDecimal.valueOf(205_000));
+        product.setStockQuantity(10);
+        product.setSwitchType(switchType);
+        product.setSpecs(specs);
+        return products.saveAndFlush(product);
+    }
+
+    private record BuildFixture(Product kit, Product switches, Product keycaps, Product stabilizer) {
+        String payload(Long stabilizerId) {
+            return """
+                {"kitProductId":%d,"switchProductId":%d,"keycapProductId":%d,"stabilizerProductId":%s,"budget":2000000}
+                """.formatted(kit.getId(), switches.getId(), keycaps.getId(), stabilizerId);
+        }
     }
 
     @Test

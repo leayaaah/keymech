@@ -3,6 +3,8 @@ package vn.edu.iuh.keymech.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -52,6 +54,10 @@ public class CustomRequest {
 
     @Column(length = 1000)
     private String note;
+
+    @ElementCollection
+    @CollectionTable(name = "custom_request_components", joinColumns = @JoinColumn(name = "custom_request_id"))
+    private List<CustomRequestComponent> components = new ArrayList<>();
 
     @Column(name = "quoted_price", precision = 12, scale = 0)
     private BigDecimal quotedPrice;

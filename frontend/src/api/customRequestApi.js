@@ -4,6 +4,10 @@ import axiosClient from './axiosClient';
  * API cho luồng Custom bàn phím cơ (Customer & Staff).
  */
 export const customRequestApi = {
+  listComponents() {
+    return axiosClient.get('/custom-requests/components');
+  },
+
   create(payload) {
     return axiosClient.post('/custom-requests', payload);
   },

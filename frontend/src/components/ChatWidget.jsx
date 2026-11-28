@@ -78,6 +78,21 @@ export function ChatWidget() {
   const chatBodyRef = useRef(null);
   const lastMessageRef = useRef(null);
   const endRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const openCompatibilityChat = () => {
+      setOpen(true);
+      setInput((current) => current || 'Làm sao kiểm tra tương thích linh kiện Custom?');
+      inputRef.current?.focus();
+    };
+    window.addEventListener('keymech:chat-compatibility', openCompatibilityChat);
+    return () => window.removeEventListener('keymech:chat-compatibility', openCompatibilityChat);
+  }, []);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open || loadedHistory.current) return;
@@ -288,6 +303,7 @@ export function ChatWidget() {
             }}
           >
             <input
+              ref={inputRef}
               type="text"
               className="km-chat-input"
               aria-label="Nhập câu hỏi tư vấn"

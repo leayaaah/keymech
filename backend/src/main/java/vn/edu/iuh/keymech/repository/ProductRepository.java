@@ -29,6 +29,10 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     boolean existsByCategoryIdAndStatus(long categoryId, VisibilityStatus status);
 
+    @Query("select p from Product p join fetch p.category c where p.status = :status and c.status = :status "
+        + "and p.stockQuantity > 0 order by p.price, p.id")
+    List<Product> findInStockWithVisibleCategory(@Param("status") VisibilityStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Product p where p.id = :id")
     Optional<Product> lockById(long id);

@@ -14,12 +14,33 @@ import { toast } from '../../utils/toast';
 import '../../styles/auth.css';
 import '../../styles/customer.css';
 
-const LAYOUT_OPTIONS = ['60%', '65%', '75%', 'TKL', 'Full-size'];
-const SWITCH_TYPES = ['Linear', 'Tactile', 'Clicky'];
-const CASE_MATERIALS = ['Nhựa', 'Nhôm', 'Gỗ', 'Acrylic'];
-const LED_TYPES = ['Không', 'RGB', 'Đơn sắc'];
 const MIN_BUDGET = 500000;
 const MAX_NOTE_LENGTH = 1000;
+
+function ComponentSelect({ id, label, options, value, onChange, error, disabled }) {
+  return (
+    <div className="km-field">
+      <label htmlFor={id} className="km-label">{label} <span className="km-required">*</span></label>
+      <select
+        id={id}
+        className={`km-select ${error ? 'km-input--error' : ''}`}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+      >
+        <option value="">Chọn {label.toLowerCase()}</option>
+        {options.map((part) => (
+          <option key={part.productId} value={part.productId}>
+            {part.name} — {formatVND(part.unitPrice)}{part.quantity > 1 ? ` × ${part.quantity}` : ''}
+          </option>
+        ))}
+      </select>
+      {error && <p id={`${id}-error`} className="km-field-error">{error}</p>}
+    </div>
+  );
+}
 
 function customBadgeClass(status) {
   if (status === 'COMPLETED' || status === 'ACCEPTED') return 'km-badge km-badge--success';
@@ -44,22 +65,54 @@ export function CustomerCustomRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [catalog, setCatalog] = useState({ options: null, error: '' });
+  const [catalogRevision, setCatalogRevision] = useState(0);
 
   // Form state
   const [form, setForm] = useState({
-    layout: '75%',
-    switchType: 'Linear',
-    switchName: '',
-    caseMaterial: 'Nhôm',
-    keycapSet: '',
-    ledType: 'RGB',
-    lubeSwitch: false,
-    hotSwap: true,
+    kitProductId: '',
+    switchProductId: '',
+    keycapProductId: '',
+    stabilizerProductId: '',
     budget: '',
     note: '',
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  const kits = catalog.options ?? [];
+  const kitOption = kits.find((option) => option.kit.productId === Number(form.kitProductId));
+  const switchOption = kitOption?.switches.find((part) => part.productId === Number(form.switchProductId));
+  const keycapOption = kitOption?.keycaps.find((part) => part.productId === Number(form.keycapProductId));
+  const stabilizerOption = kitOption?.stabilizers.find((part) => part.productId === Number(form.stabilizerProductId));
+  const subtotal = [kitOption?.kit, switchOption, keycapOption, stabilizerOption]
+    .reduce((sum, part) => sum + (part ? part.unitPrice * part.quantity : 0), 0);
+
+  useEffect(() => {
+    if (tab !== 'create') return;
+    let active = true;
+    customRequestApi.listComponents().then((options) => {
+      if (active) setCatalog({ options, error: '' });
+    }).catch((err) => {
+      if (active) setCatalog({ options: null, error: getFeatureErrorMessage(err, 'Không thể tải linh kiện.') });
+    });
+    return () => { active = false; };
+  }, [tab, catalogRevision]);
+
+  const reloadCatalog = () => {
+    setCatalog({ options: null, error: '' });
+    setCatalogRevision((current) => current + 1);
+  };
+
+  const updatePart = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setFormErrors((current) => ({ ...current, [field]: '' }));
+  };
+
+  const updateKit = (kitProductId) => {
+    setForm((current) => ({ ...current, kitProductId, switchProductId: '', keycapProductId: '', stabilizerProductId: '' }));
+    setFormErrors((current) => ({ ...current, kitProductId: '', switchProductId: '', keycapProductId: '', stabilizerProductId: '' }));
+  };
 
   useEffect(() => {
     if (tab !== 'list') return;
@@ -88,10 +141,12 @@ export function CustomerCustomRequestsPage() {
 
   const validateForm = () => {
     const next = {};
-    if (!form.layout) next.layout = 'Vui lòng chọn layout.';
-    if (!form.switchType) next.switchType = 'Vui lòng chọn loại switch.';
-    if (!form.switchName.trim()) next.switchName = 'Vui lòng nhập tên switch mong muốn.';
-    else if (form.switchName.trim().length > 70) next.switchName = 'Tên switch tối đa 70 ký tự.';
+    if (!kitOption) next.kitProductId = 'Vui lòng chọn kit còn hàng.';
+    if (kitOption && !switchOption) next.switchProductId = 'Vui lòng chọn switch tương thích.';
+    if (kitOption && !keycapOption) next.keycapProductId = 'Vui lòng chọn bộ keycap tương thích.';
+    if (kitOption && !kitOption.stabilizersIncluded && !stabilizerOption) {
+      next.stabilizerProductId = 'Vui lòng chọn stabilizer tương thích.';
+    }
 
     if (form.budget !== '') {
       const budgetNum = Number(form.budget);
@@ -115,14 +170,10 @@ export function CustomerCustomRequestsPage() {
     setSubmitting(true);
     try {
       const created = await customRequestApi.create({
-        layout: form.layout === 'Full-size' ? 'Fullsize' : form.layout,
-        switchType: form.switchType,
-        switchName: form.switchName.trim(),
-        caseMaterial: form.caseMaterial,
-        keycapSet: form.keycapSet.trim() || null,
-        ledType: form.ledType,
-        lubeSwitch: form.lubeSwitch,
-        hotSwap: form.hotSwap,
+        kitProductId: kitOption.kit.productId,
+        switchProductId: switchOption.productId,
+        keycapProductId: keycapOption.productId,
+        stabilizerProductId: stabilizerOption?.productId ?? null,
         budget: form.budget !== '' ? Number(form.budget) : null,
         note: form.note.trim() || null,
       });
@@ -136,6 +187,7 @@ export function CustomerCustomRequestsPage() {
       }
     } catch (err) {
       toast.error(getFeatureErrorMessage(err, 'Không thể gửi yêu cầu Custom.'));
+      if ([400, 409].includes(err?.response?.status)) reloadCatalog();
     } finally {
       setSubmitting(false);
     }
@@ -184,137 +236,75 @@ export function CustomerCustomRequestsPage() {
           <form className="km-account-card" onSubmit={handleSubmit} noValidate>
             <h2>Cấu hình mong muốn</h2>
             <p className="km-field-hint">Các trường có dấu * là bắt buộc.</p>
+            <button
+              type="button"
+              className="km-btn km-btn-soft"
+              onClick={() => window.dispatchEvent(new Event('keymech:chat-compatibility'))}
+            >
+              Hỏi về tương thích
+            </button>
 
-            <div className="km-form-row-2">
-              <div className="km-field">
-                <label htmlFor="custom-layout" className="km-label">
-                  Layout <span className="km-required">*</span>
-                </label>
-                <select
-                  id="custom-layout"
-                  className="km-select"
-                  value={form.layout}
-                  onChange={(e) => setForm((p) => ({ ...p, layout: e.target.value }))}
-                >
-                  {LAYOUT_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-                <p className="km-field-hint">60% • 65% • 75% • TKL • Full-size</p>
-              </div>
-
-              <div className="km-field">
-                <label htmlFor="custom-switch-type" className="km-label">
-                  Loại switch <span className="km-required">*</span>
-                </label>
-                <select
-                  id="custom-switch-type"
-                  className="km-select"
-                  value={form.switchType}
-                  onChange={(e) => setForm((p) => ({ ...p, switchType: e.target.value }))}
-                >
-                  {SWITCH_TYPES.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-                <p className="km-field-hint">Linear • Tactile • Clicky</p>
-              </div>
-            </div>
-
-            <div className="km-form-row-2">
-              <div className="km-field">
-                <label htmlFor="custom-switch-name" className="km-label">
-                  Tên switch <span className="km-required">*</span>
-                </label>
-                <input
-                  id="custom-switch-name"
-                  type="text"
-                  className={`km-input ${formErrors.switchName ? 'km-input--error' : ''}`}
-                  placeholder="Gateron Milky Yellow Pro"
-                  value={form.switchName}
-                  onChange={(e) => {
-                    setForm((p) => ({ ...p, switchName: e.target.value }));
-                    if (formErrors.switchName) setFormErrors((p) => ({ ...p, switchName: '' }));
-                  }}
+            {catalog.error ? (
+              <ErrorState title="Lỗi tải linh kiện" message={catalog.error} onRetry={reloadCatalog} />
+            ) : catalog.options === null ? (
+              <Loading message="Đang tải linh kiện..." />
+            ) : kits.length === 0 ? (
+              <p className="km-field-hint" role="status">Shop hiện chưa có bộ linh kiện tương thích và đủ hàng để gửi yêu cầu.</p>
+            ) : (
+              <>
+                <ComponentSelect
+                  id="custom-kit"
+                  label="Kit bàn phím"
+                  options={kits.map((option) => option.kit)}
+                  value={kitOption ? form.kitProductId : ''}
+                  onChange={updateKit}
+                  error={formErrors.kitProductId}
+                  disabled={submitting}
                 />
-                {formErrors.switchName && <p className="km-field-error">{formErrors.switchName}</p>}
-              </div>
-
-              <div className="km-field">
-                <label htmlFor="custom-case" className="km-label">
-                  Chất liệu case
-                </label>
-                <select
-                  id="custom-case"
-                  className="km-select"
-                  value={form.caseMaterial}
-                  onChange={(e) => setForm((p) => ({ ...p, caseMaterial: e.target.value }))}
-                >
-                  {CASE_MATERIALS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="km-form-row-2">
-              <div className="km-field">
-                <label htmlFor="custom-keycap" className="km-label">
-                  Bộ keycap
-                </label>
-                <input
-                  id="custom-keycap"
-                  type="text"
-                  className="km-input"
-                  placeholder="PBT Cherry profile • Trắng / xanh navy"
-                  value={form.keycapSet}
-                  onChange={(e) => setForm((p) => ({ ...p, keycapSet: e.target.value }))}
-                />
-              </div>
-
-              <div className="km-field">
-                <label htmlFor="custom-led" className="km-label">
-                  Đèn LED
-                </label>
-                <select
-                  id="custom-led"
-                  className="km-select"
-                  value={form.ledType}
-                  onChange={(e) => setForm((p) => ({ ...p, ledType: e.target.value }))}
-                >
-                  {LED_TYPES.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              <label className="km-filter-option">
-                <input
-                  type="checkbox"
-                  checked={form.lubeSwitch}
-                  onChange={(e) => setForm((p) => ({ ...p, lubeSwitch: e.target.checked }))}
-                />
-                <span>Lube switch</span>
-              </label>
-              <label className="km-filter-option">
-                <input
-                  type="checkbox"
-                  checked={form.hotSwap}
-                  onChange={(e) => setForm((p) => ({ ...p, hotSwap: e.target.checked }))}
-                />
-                <span>Hot-swap</span>
-              </label>
-            </div>
+                {kitOption && (
+                  <>
+                    <p className="km-field-hint">
+                      Layout {kitOption.layout}. Vỏ, plate và PCB đi kèm kit.
+                      {kitOption.hotSwap && ' PCB hot-swap cho phép thay switch tương thích mà không cần hàn.'}
+                    </p>
+                    <div className="km-form-row-2">
+                      <ComponentSelect
+                        id="custom-switch"
+                        label="Switch"
+                        options={kitOption.switches}
+                        value={switchOption ? form.switchProductId : ''}
+                        onChange={(value) => updatePart('switchProductId', value)}
+                        error={formErrors.switchProductId}
+                        disabled={submitting}
+                      />
+                      <ComponentSelect
+                        id="custom-keycap"
+                        label="Bộ keycap"
+                        options={kitOption.keycaps}
+                        value={keycapOption ? form.keycapProductId : ''}
+                        onChange={(value) => updatePart('keycapProductId', value)}
+                        error={formErrors.keycapProductId}
+                        disabled={submitting}
+                      />
+                    </div>
+                    {kitOption.stabilizersIncluded ? (
+                      <p className="km-field-hint">Kit đã có stabilizer.</p>
+                    ) : (
+                      <ComponentSelect
+                        id="custom-stabilizer"
+                        label="Stabilizer"
+                        options={kitOption.stabilizers}
+                        value={stabilizerOption ? form.stabilizerProductId : ''}
+                        onChange={(value) => updatePart('stabilizerProductId', value)}
+                        error={formErrors.stabilizerProductId}
+                        disabled={submitting}
+                      />
+                    )}
+                    <p className="km-field-hint" aria-live="polite">Tạm tính linh kiện đã chọn: <strong>{formatVND(subtotal)}</strong></p>
+                  </>
+                )}
+              </>
+            )}
 
             <div className="km-field">
               <label htmlFor="custom-budget" className="km-label">
@@ -345,15 +335,19 @@ export function CustomerCustomRequestsPage() {
                 rows={4}
                 maxLength={MAX_NOTE_LENGTH}
                 className={`km-textarea ${formErrors.note ? 'km-input--error' : ''}`}
-                placeholder="Ưu tiên tiếng gõ trầm, phù hợp văn phòng..."
+                aria-describedby="custom-note-hint"
+                placeholder="Ví dụ: Muốn gõ êm và dễ thay switch."
                 value={form.note}
                 onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
               />
+              <p id="custom-note-hint" className="km-field-hint">
+                Ghi thêm nhu cầu về âm thanh hoặc cách lắp để nhân viên xem khi báo giá.
+              </p>
               {formErrors.note && <p className="km-field-error">{formErrors.note}</p>}
             </div>
 
             <div>
-              <button type="submit" className="km-btn km-btn-primary" disabled={submitting}>
+              <button type="submit" className="km-btn km-btn-primary" disabled={submitting || kits.length === 0}>
                 {submitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu Custom'}
               </button>
             </div>

@@ -100,7 +100,7 @@ Mười bốn quyết định dưới đây là nền của kế hoạch; cột 
 | Guest | G-06 | Quên mật khẩu | Nhập email, nhận mã xác thực qua email, nhập mã và mật khẩu mới; mọi vai trò dùng được; luôn trả cùng một thông báo dù email có tồn tại hay không; mã hết hạn sau 10 phút, tối đa 5 lần nhập sai; tài khoản bị ẩn không nhận mã |
 | Customer | C-01 | Đăng nhập, đăng xuất | Mọi vai trò dùng chung; sai thông tin hoặc tài khoản bị ẩn báo lỗi chung; giỏ của Guest được giữ lại sau khi Customer đăng nhập (Staff và Admin thì giỏ bị xóa) |
 | Customer | C-02 | Đặt hàng và thanh toán | Giỏ không rỗng; nhập địa chỉ, số điện thoại, phương thức; một transaction tạo đơn, trừ tồn, gửi email, xóa giỏ; lỗi thì rollback và giữ giỏ |
-| Customer | C-03 | Gửi yêu cầu Custom | Đủ trường bắt buộc; trạng thái `PENDING`; trả mã yêu cầu |
+| Customer | C-03 | Gửi yêu cầu Custom | Chọn kit và linh kiện tương thích đang bán từ danh mục; trạng thái `PENDING`; trả mã yêu cầu |
 | Customer | C-04 | Xem đơn hàng và tiến độ Custom của mình | Chỉ xem dữ liệu của chính mình; dữ liệu của người khác trả 403 |
 | Customer | C-05 | Đổi mật khẩu | Nhập mật khẩu cũ và mới; sai mật khẩu cũ trả 400; mật khẩu mới ≥ 8 ký tự, băm BCrypt; chỉ Customer |
 | Customer | C-06 | Phản hồi báo giá Custom | Đồng ý khi yêu cầu `QUOTED` (kèm giá đang xem, lệch giá hiện tại thì 409); hủy hoặc từ chối báo giá khi `PENDING` hoặc `QUOTED`; chỉ với yêu cầu của chính mình |
@@ -349,7 +349,9 @@ Yêu cầu Custom đi qua bảy trạng thái; Customer gửi yêu cầu, theo d
 
 Hai nhóm API tương ứng là `/api/custom-requests/**` (chỉ Customer, kiểm tra chủ sở hữu) và `/api/staff/custom-requests/**` (Staff và Admin).
 
-**Các trường của biểu mẫu:**
+**Biểu mẫu C-03 hiện hành:** khách chọn kit gồm vỏ, plate, PCB, cùng switch, keycap và stabilizer nếu kit chưa kèm. Backend kiểm tra tương thích và lưu bản chụp linh kiện. Xem [hợp đồng hiện hành](custom-request-components.md).
+
+**Các trường của biểu mẫu cũ** được giữ để đọc yêu cầu đã tồn tại:
 
 | Trường | Loại nhập | Bắt buộc | Quy tắc validate |
 | --- | --- | --- | --- |
